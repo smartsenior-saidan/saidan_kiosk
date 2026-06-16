@@ -26,23 +26,16 @@ html.kiosk body {
 .kiosk-scroll::-webkit-scrollbar { display: none; }
 
 /* ============================================================
-   LANGUAGE SWITCHER — always on top
+   LANGUAGE SWITCHER — inline in search topbar
    ============================================================ */
 
 .lang-switcher {
-  position: fixed;
-  top: 20px;
-  right: 24px;
-  z-index: 100;
   display: flex;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(0, 0, 0, 0.05);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 4px;
-  gap: 4px;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: var(--shadow-soft);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
 }
 
 .lang-btn {
@@ -182,7 +175,7 @@ html.kiosk body {
    ============================================================ */
 
 .screen-search {
-  background: linear-gradient(180deg, #f6f2ea 0%, #efe9dd 100%);
+  background: #f0ece4;
 }
 
 /* ---- Top bar ---- */
@@ -228,10 +221,18 @@ html.kiosk body {
   margin: 2px 0 0;
 }
 
+.search-topbar-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .search-topbar-end {
   min-width: 120px;
-  height: 54px;
-  font-size: 1.05rem;
+  height: 44px;
+  font-size: 1.0rem;
   padding: 0 20px;
   background: transparent;
   color: var(--color-text-muted);
@@ -437,16 +438,14 @@ html.kiosk body {
 
 .keyboard-area {
   flex-shrink: 0;
-  background: linear-gradient(180deg, #ece5d6 0%, #e5ddca 100%);
-  border-top: 1px solid #dcd3bd;
-  border-radius: 28px 28px 0 0;
-  box-shadow: 0 -6px 24px rgba(90, 70, 35, 0.08);
-  padding: 22px 26px 26px;
+  background: #c7c0b4;
+  border-top: 1px solid #b8b0a4;
+  padding: 14px 16px 18px;
 }
 
 .kb-body {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .kb-main {
@@ -460,7 +459,7 @@ html.kiosk body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 104px;
+  width: 110px;
 }
 
 .kb-key {
@@ -468,27 +467,26 @@ html.kiosk body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 62px;
+  height: 72px;
   min-width: unset;
   min-height: unset;
   padding: 0;
-  font-size: 1.55rem;
-  font-weight: 500;
-  color: #2c2622;
-  background: #fffdf9;
-  border: 1px solid rgba(120, 95, 50, 0.08);
-  border-radius: 16px;
-  box-shadow: 0 2px 4px rgba(90, 70, 35, 0.1), 0 1px 0 rgba(255,255,255,0.7) inset;
+  font-size: 1.7rem;
+  font-weight: 400;
+  color: #1c1c1e;
+  background: #ffffff;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.12);
   cursor: pointer;
-  transition: background 0.08s ease, transform 0.06s ease, box-shadow 0.08s ease;
+  transition: background 0.06s ease, box-shadow 0.06s ease;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
 
 .kb-key:active {
-  background: #f0e9da;
-  transform: translateY(1px) scale(0.97);
-  box-shadow: 0 1px 2px rgba(90, 70, 35, 0.12);
+  background: #a8a8a8;
+  box-shadow: 0 0 0 rgba(0,0,0,0.1);
 }
 
 .kb-key.empty {
@@ -499,23 +497,23 @@ html.kiosk body {
 }
 
 .kb-key-sub {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 600;
-  color: #9a8f78;
+  color: #636366;
   margin-top: 2px;
   line-height: 1;
 }
 
-/* Special key variants — warm neutral */
+/* Special key variants — gray like iOS */
 .kb-key.action {
-  background: #d8d0bd;
-  color: #4a4334;
-  border-color: rgba(120, 95, 50, 0.12);
-  font-size: 1.15rem;
+  background: #adb5bd;
+  color: #1c1c1e;
+  font-size: 1.2rem;
   font-weight: 600;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.12);
 }
 
-.kb-key.action:active { background: #c9bda4; transform: translateY(1px) scale(0.97); }
+.kb-key.action:active { background: #8e9399; box-shadow: 0 0 0 rgba(0,0,0,0.1); }
 
 /* Bottom bar: space + clear */
 .kb-bottom {
@@ -526,47 +524,47 @@ html.kiosk body {
 
 .kb-space {
   flex: 1;
-  height: 60px;
+  height: 70px;
   min-height: unset;
   min-width: unset;
   font-size: 1.15rem;
-  font-weight: 600;
-  letter-spacing: 2px;
-  color: #f4f1ea;
-  background: #5b6270;
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: #1c1c1e;
+  background: #ffffff;
   border: none;
-  border-radius: 16px;
-  box-shadow: 0 2px 6px rgba(50, 55, 65, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.12);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.08s ease, transform 0.06s ease;
+  transition: background 0.06s ease, box-shadow 0.06s ease;
 }
 
 .kb-space:active {
-  background: #4c525e;
-  transform: translateY(1px) scale(0.995);
+  background: #a8a8a8;
+  box-shadow: 0 0 0 rgba(0,0,0,0.1);
 }
 
 .kb-clear-all {
-  width: 150px;
-  height: 60px;
+  width: 160px;
+  height: 70px;
   min-height: unset;
   min-width: unset;
   font-size: 1.1rem;
-  font-weight: 700;
-  color: #6b5a3a;
-  background: #ded2b6;
-  border: 1px solid rgba(120, 95, 50, 0.14);
-  border-radius: 16px;
-  box-shadow: 0 2px 6px rgba(90, 70, 35, 0.12);
+  font-weight: 600;
+  color: #1c1c1e;
+  background: #adb5bd;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.12);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.08s ease, transform 0.06s ease;
+  transition: background 0.06s ease, box-shadow 0.06s ease;
 }
 
 .kb-clear-all:active {
-  background: #d2c5a4;
-  transform: translateY(1px) scale(0.985);
+  background: #8e9399;
+  box-shadow: 0 0 0 rgba(0,0,0,0.1);
 }
 /* ============================================================
    PROFILE PAGE  —  serene marble memorial presentation

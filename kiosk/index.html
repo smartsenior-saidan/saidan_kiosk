@@ -14,11 +14,6 @@
   </head>
   <body>
 
-    <!-- ══ Language toggle (always visible) ══ -->
-    <div class="lang-switcher" id="langSwitcher">
-      <button class="lang-btn active" data-lang="ja">日本語</button>
-      <button class="lang-btn"        data-lang="en">English</button>
-    </div>
 
     <!-- ══════════════════════════════════════════════════════
          HOME SCREEN
@@ -54,7 +49,13 @@
           <h2 data-i18n="searchTitle"></h2>
           <p  data-i18n="searchSub"></p>
         </div>
-        <button class="search-topbar-end" id="endVisitBtn" data-i18n="endVisit"></button>
+        <div class="search-topbar-right">
+          <div class="lang-switcher" id="langSwitcher">
+            <button class="lang-btn active" data-lang="ja">日本語</button>
+            <button class="lang-btn"        data-lang="en">English</button>
+          </div>
+          <button class="search-topbar-end" id="endVisitBtn" data-i18n="endVisit"></button>
+        </div>
       </div>
 
       <!-- Search input -->
