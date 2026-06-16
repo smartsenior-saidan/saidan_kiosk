@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/admin.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -248,27 +247,6 @@
                     <button id="resetBtn" type="button" class="btn-secondary" data-i18n="btn.clear">Clear</button>
                   </div>
                 </form>
-              </div>
-
-              <!-- NFC / QR card — revealed after save -->
-              <div class="card hidden" id="linkBox">
-                <h3 class="card-title" data-i18n="card.linkNfc">Link NFC / QR</h3>
-                <p class="field-hint" data-i18n="hint.linkNfc">Program an NFC tag or print the QR code. Scans are logged automatically.</p>
-
-                <div class="field" style="margin-top:16px">
-                  <label data-i18n="label.profileUrl">Profile URL</label>
-                  <div class="url-row">
-                    <input id="linkUrl" type="text" class="url-input" readonly />
-                    <button id="copyLinkBtn" type="button" class="btn-secondary" data-i18n="btn.copy">Copy</button>
-                  </div>
-                </div>
-
-                <div class="field">
-                  <label data-i18n="label.nfcUrl">NFC tag URL</label>
-                  <input id="nfcUrl" type="text" class="url-input" readonly />
-                </div>
-
-                <div id="qrcode" class="qr-wrap"></div>
               </div>
 
             </div>

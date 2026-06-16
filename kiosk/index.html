@@ -20,9 +20,12 @@
          ═══════════════════════════════════════════════════ -->
     <div id="screen-home" class="screen screen-home">
 
-      <div class="home-brand">
-        <div class="home-logo">S</div>
-        <span class="home-brand-name">SmartSenior</span>
+      <!-- Language switcher — top right -->
+      <div class="home-lang-wrap">
+        <div class="lang-switcher" id="homeLangSwitcher">
+          <button class="lang-btn active" data-lang="ja">日本語</button>
+          <button class="lang-btn"        data-lang="en">English</button>
+        </div>
       </div>
 
       <div class="home-greeting">
@@ -78,7 +81,7 @@
       <!-- Results -->
       <div class="search-results-panel kiosk-scroll" id="results" aria-live="polite"></div>
 
-      <!-- Keyboard -->
+      <!-- Keyboard — compact floating container -->
       <div class="keyboard-area" id="keyboardArea">
         <div class="kb-body">
           <div class="kb-main"    id="kbMain"></div>
@@ -296,6 +299,41 @@
       document.getElementById('kbClearAll').addEventListener('click', clearInput);
       document.getElementById('searchClearBtn').addEventListener('click', clearInput);
 
+      // ── Layout vars (topbar + input row heights) ─────────────────────
+      const keyboardArea  = document.getElementById('keyboardArea');
+      const searchScreen2 = document.getElementById('screen-search');
+      const resultsEl     = document.getElementById('results');
+
+      function measureLayout() {
+        const topH   = document.querySelector('.search-topbar').offsetHeight;
+        const inputH = document.querySelector('.search-input-row').offsetHeight;
+        searchScreen2.style.setProperty('--topbar-h',    topH   + 'px');
+        searchScreen2.style.setProperty('--input-row-h', inputH + 'px');
+        searchScreen2.style.setProperty('--results-w',   '0px');
+        resultsEl.style.top = topH + 'px';
+      }
+
+      // ── Keyboard: always visible on search screen ─────────────────────
+      function openKeyboard() {
+        keyboardArea.classList.add('open');
+      }
+
+      function closeKeyboard() {
+        keyboardArea.classList.remove('open');
+      }
+
+      // ── Results panel: auto show/hide; update keyboard position var ───
+      function setResultsWidth(open) {
+        const w = open ? Math.min(380, window.innerWidth * 0.44) : 0;
+        searchScreen2.style.setProperty('--results-w', w + 'px');
+      }
+
+      new MutationObserver(() => {
+        const hasResults = resultsEl.children.length > 0;
+        resultsEl.classList.toggle('panel-open', hasResults);
+        setResultsWidth(hasResults);
+      }).observe(resultsEl, { childList: true });
+
       // ── Screen navigation ─────────────────────────────────────────────
       const homeScreen   = document.getElementById('screen-home');
       const searchScreen = document.getElementById('screen-search');
@@ -303,8 +341,10 @@
       function showSearch() {
         homeScreen.classList.add('hidden');
         searchScreen.classList.remove('hidden');
+        requestAnimationFrame(() => { measureLayout(); openKeyboard(); });
       }
       function showHome() {
+        closeKeyboard();
         searchScreen.classList.add('hidden');
         homeScreen.classList.remove('hidden');
         clearInput();
@@ -314,13 +354,15 @@
       document.getElementById('backBtn').addEventListener('click', showHome);
       document.getElementById('endVisitBtn').addEventListener('click', showHome);
 
-      // ── Language switcher ─────────────────────────────────────────────
-      document.getElementById('langSwitcher').addEventListener('click', e => {
+      // ── Language switchers (home + search screens) ────────────────────
+      function handleLangClick(e) {
         const btn = e.target.closest('[data-lang]');
         if (!btn || btn.dataset.lang === currentLang) return;
         currentLang = btn.dataset.lang;
         applyLang();
-      });
+      }
+      document.getElementById('langSwitcher').addEventListener('click', handleLangClick);
+      document.getElementById('homeLangSwitcher').addEventListener('click', handleLangClick);
 
       // ── Boot ──────────────────────────────────────────────────────────
       applyLang();

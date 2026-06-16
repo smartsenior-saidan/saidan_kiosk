@@ -404,7 +404,6 @@ function profileRow(p, full = false) {
         <td>${p.plot_row || "—"}</td>
         <td>
           <div class="table-actions">
-            <button class="btn-secondary" data-action="link" data-id="${p.id}">${t("btn.link")}</button>
             <button class="btn-secondary" data-action="edit" data-id="${p.id}">${t("btn.edit")}</button>
             <button class="btn-danger"    data-action="delete" data-id="${p.id}">${t("btn.delete")}</button>
           </div>
@@ -425,7 +424,6 @@ function profileRow(p, full = false) {
       <td>${p.plot || "—"}</td>
       <td>
         <div class="table-actions">
-          <button class="btn-secondary" data-action="link" data-id="${p.id}">Link</button>
           <button class="btn-secondary" data-action="edit" data-id="${p.id}">Edit</button>
           <button class="btn-danger"    data-action="delete" data-id="${p.id}">Delete</button>
         </div>
@@ -441,7 +439,6 @@ function wireProfileActions(container, localProfiles) {
       const id = btn.dataset.id;
       const person = pool.find((p) => p.id === id);
 
-      if (action === "link") { showProfileLink(id); showSection("new-profile"); }
       if (action === "edit" && person) { loadForEdit(person); showSection("new-profile"); }
       if (action === "delete" && person) await deleteProfile(person);
     });
@@ -620,10 +617,10 @@ async function handleSave(e) {
       setProgress(100);
     }
 
-    setFormStatus(t("status.profileSaved"), "success");
     setStatus(t("status.savedToast", { name: `${data.first_name} ${data.last_name}` }), "success");
     resetForm();
-    showProfileLink(personId);
+    await loadProfileList();
+    showSection("profiles");
   } catch (err) {
     console.error("[admin] save failed:", err);
     setFormStatus(t("status.saveFailed", { msg: err.message || err }), "error");
@@ -652,7 +649,6 @@ function resetForm() {
   if (saveBtn) saveBtn.textContent = t("btn.saveProfile");
   const formTitle = document.getElementById("formTitle");
   if (formTitle) formTitle.textContent = t("formTitle.new");
-  document.getElementById("linkBox")?.classList.add("hidden");
   clearFormStatus();
 }
 
@@ -748,51 +744,6 @@ async function deleteProfile(person) {
   } catch (err) {
     console.error("[admin] delete failed:", err);
     setStatus(t("status.deleteFailed", { msg: err.message }), "error");
-  }
-}
-
-// ── NFC / QR ─────────────────────────────────────────────────────────────────
-
-function profileUrl(personId, via) {
-  const url = new URL("../kiosk/family.html", window.location.href);
-  url.searchParams.set("person", personId);
-  if (via) url.searchParams.set("via", via);
-  return url.href;
-}
-
-function showProfileLink(personId) {
-  const box = document.getElementById("linkBox");
-  const linkUrl = document.getElementById("linkUrl");
-  const nfcUrl  = document.getElementById("nfcUrl");
-  if (!box || !linkUrl) return;
-
-  const qrUrl = profileUrl(personId, "qr");
-  linkUrl.value = qrUrl;
-  if (nfcUrl) nfcUrl.value = profileUrl(personId, "nfc");
-  box.classList.remove("hidden");
-  renderQrCode(qrUrl);
-}
-
-function renderQrCode(url) {
-  const target = document.getElementById("qrcode");
-  if (!target) return;
-  target.innerHTML = "";
-  if (window.QRCode) {
-    new window.QRCode(target, { text: url, width: 160, height: 160 });
-  } else {
-    target.innerHTML = `<a href="${url}" target="_blank" rel="noopener" style="color:#0D1B2A;font-size:0.85rem;">${t("link.open")}</a>`;
-  }
-}
-
-async function copyLink() {
-  const field = document.getElementById("linkUrl");
-  if (!field) return;
-  try {
-    await navigator.clipboard.writeText(field.value);
-    setStatus(t("status.linkCopied"), "success");
-  } catch {
-    field.select();
-    setStatus(t("status.pressCopy"), "info");
   }
 }
 
@@ -1096,9 +1047,6 @@ export function initAdminPortal() {
       if (e.dataTransfer?.files?.length) stageFiles(e.dataTransfer.files);
     });
   }
-
-  // Copy link button
-  document.getElementById("copyLinkBtn")?.addEventListener("click", copyLink);
 
   // Family picker — pre-load profiles so search works on first use
   getDocs(tenantQuery(COLLECTIONS.persons)).then((snap) => {
