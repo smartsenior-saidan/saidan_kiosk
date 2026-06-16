@@ -40,17 +40,17 @@ service cloud.firestore {
     }
 
     // ── Memorial profiles ───────────────────────────────────────────────────
-    match /deceased_persons/{id} {
+    match /deceased_persons/{personId} {
       allow read:          if true;                                   // public kiosk
       allow create:        if ownsTenant(request.resource.data.tenant_id);
       allow update, delete: if ownsTenant(resource.data.tenant_id);
-    }
 
-    // ── Photos / videos ─────────────────────────────────────────────────────
-    match /media_files/{id} {
-      allow read:          if true;                                   // public kiosk
-      allow create:        if ownsTenant(request.resource.data.tenant_id);
-      allow update, delete: if ownsTenant(resource.data.tenant_id);
+      // ── Media subcollection (photos / videos) ───────────────────────────
+      match /media/{mediaId} {
+        allow read:          if true;                                 // public kiosk
+        allow create:        if ownsTenant(request.resource.data.tenant_id);
+        allow update, delete: if ownsTenant(resource.data.tenant_id);
+      }
     }
 
     // ── Analytics events ────────────────────────────────────────────────────

@@ -6,10 +6,9 @@ import {
   getDoc,
   doc,
   db,
-  where,
-  tenantQuery,
   COLLECTIONS,
   getPersonById,
+  personMediaCollection,
 } from "./firebase.js";
 import { logProfileView, logArrivalSource, logVideoPlay } from "./analytics.js";
 
@@ -87,11 +86,7 @@ function computeAge(birthIso, deathIso) {
 
 async function loadMedia(personId) {
   try {
-    // No orderBy here on purpose: combining it with the two equality filters
-    // would force a Firestore composite index. Sort client-side instead.
-    const snap = await getDocs(
-      tenantQuery(COLLECTIONS.media, where("person_id", "==", personId))
-    );
+    const snap = await getDocs(personMediaCollection(personId));
     return snap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));

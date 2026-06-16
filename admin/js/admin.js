@@ -27,6 +27,8 @@ import {
   deleteObject,
   COLLECTIONS,
   TENANT_ID,
+  personMediaCollection,
+  personMediaDoc,
 } from "./firebase.js";
 import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js";
 
@@ -576,16 +578,16 @@ async function handleSave(e) {
       removedMediaIds.push(existingCover.id);
     }
 
-    // Delete removed media docs + storage files
+    // Delete removed media docs + their storage files
     for (const mediaId of removedMediaIds) {
       try {
-        const mdoc = await getDoc(doc(db, COLLECTIONS.media, mediaId));
+        const mdoc = await getDoc(personMediaDoc(personId, mediaId));
         if (mdoc.exists()) {
           const d = mdoc.data();
           if (d.storage_path) {
             try { await deleteObject(storageRef(storage, d.storage_path)); } catch {}
           }
-          await deleteDoc(doc(db, COLLECTIONS.media, mediaId));
+          await deleteDoc(personMediaDoc(personId, mediaId));
         }
       } catch (e) { console.warn("[admin] media delete failed:", e); }
     }
@@ -595,17 +597,15 @@ async function handleSave(e) {
     if (totalUploads > 0) {
       setFormStatus(t("status.uploading", { n: totalUploads }), "info");
 
-      const existingSnap = await getDocs(
-        tenantQuery(COLLECTIONS.media, where("person_id", "==", personId))
-      );
+      const existingSnap = await getDocs(personMediaCollection(personId));
       let order = existingSnap.size;
 
       if (stagedCover) {
         setProgress(0);
         const { url, path } = await uploadOne(stagedCover.file, personId, setProgress);
         await addDoc(
-          collection(db, COLLECTIONS.media),
-          withTenant({ person_id: personId, file_type: "photo", role: "cover", storage_url: url, storage_path: path, display_order: -1 })
+          personMediaCollection(personId),
+          withTenant({ file_type: "photo", role: "cover", storage_url: url, storage_path: path, display_order: -1 })
         );
       }
 
@@ -613,8 +613,8 @@ async function handleSave(e) {
         setProgress(0);
         const { url, path } = await uploadOne(item.file, personId, setProgress);
         await addDoc(
-          collection(db, COLLECTIONS.media),
-          withTenant({ person_id: personId, file_type: item.type, role: "gallery", storage_url: url, storage_path: path, display_order: order++ })
+          personMediaCollection(personId),
+          withTenant({ file_type: item.type, role: "gallery", storage_url: url, storage_path: path, display_order: order++ })
         );
       }
       setProgress(100);
@@ -690,11 +690,9 @@ async function loadForEdit(person) {
   renderCoverPreview();
   renderPreviews();
 
-  // Load existing media from Firestore
+  // Load existing media from Firestore subcollection
   try {
-    const mediaSnap = await getDocs(
-      tenantQuery(COLLECTIONS.media, where("person_id", "==", person.id))
-    );
+    const mediaSnap = await getDocs(personMediaCollection(person.id));
     for (const mdoc of mediaSnap.docs) {
       const d = { id: mdoc.id, ...mdoc.data() };
       if (d.role === "cover") {
@@ -726,20 +724,17 @@ async function deleteProfile(person) {
 
   setStatus(t("status.deleting"), "info");
 
-  // Clean up media files first — failures here don't block person deletion.
+  // Clean up subcollection media first — failures here don't block person deletion.
   try {
-    const media = await getDocs(
-      tenantQuery(COLLECTIONS.media, where("person_id", "==", person.id))
-    );
+    const media = await getDocs(personMediaCollection(person.id));
     for (const m of media.docs) {
       const d = m.data();
       if (d.storage_path) {
         try { await deleteObject(storageRef(storage, d.storage_path)); } catch {}
       }
-      await deleteDoc(doc(db, COLLECTIONS.media, m.id));
+      await deleteDoc(personMediaDoc(person.id, m.id));
     }
   } catch (mediaErr) {
-    // Composite index may not exist yet — log but continue to delete the person.
     console.warn("[admin] media cleanup skipped:", mediaErr.message);
   }
 

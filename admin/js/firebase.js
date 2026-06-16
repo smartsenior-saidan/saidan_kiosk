@@ -88,9 +88,18 @@ export const COLLECTIONS = {
   tenants: "tenants",
   devices: "kiosk_devices",
   persons: "deceased_persons",
-  media: "media_files",
   events: "search_events",
 };
+
+/** Reference to the media subcollection for a specific person. */
+export function personMediaCollection(personId) {
+  return collection(db, COLLECTIONS.persons, personId, "media");
+}
+
+/** Reference to a specific media doc in the subcollection. */
+export function personMediaDoc(personId, mediaId) {
+  return doc(db, COLLECTIONS.persons, personId, "media", mediaId);
+}
 
 // Re-export Firestore + Storage helpers so other modules import from one place.
 export {
