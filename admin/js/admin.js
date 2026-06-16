@@ -902,6 +902,24 @@ export function initAdminPortal() {
     window.location.href = "login.html";
   });
 
+  // Dark / light mode toggle
+  const DARK_KEY = "admin_dark";
+  const themeToggle = document.getElementById("themeToggle");
+  const themeIcon   = document.getElementById("themeIcon");
+
+  const MOON_SVG = `<path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>`;
+  const SUN_SVG  = `<path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>`;
+
+  function applyTheme(dark) {
+    document.body.classList.toggle("dark", dark);
+    if (themeIcon) themeIcon.innerHTML = dark ? SUN_SVG : MOON_SVG;
+    if (themeToggle) themeToggle.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
+    localStorage.setItem(DARK_KEY, dark ? "1" : "0");
+  }
+
+  applyTheme(localStorage.getItem(DARK_KEY) === "1");
+  themeToggle?.addEventListener("click", () => applyTheme(!document.body.classList.contains("dark")));
+
   // Language: apply saved choice + wire the EN / 日本語 switch
   document.documentElement.lang = getLang();
   applyStaticI18n();
