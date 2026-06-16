@@ -32,8 +32,11 @@ import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
-let stagedFiles = [];       // { file, type, previewUrl } — gallery
-let stagedCover = null;    // { file, previewUrl } — cover photo
+let stagedFiles = [];       // { file, type, previewUrl } — new gallery uploads
+let stagedCover = null;    // { file, previewUrl } — new cover upload
+let existingCover = null;  // { id, storage_url, storage_path } — loaded from Firestore
+let existingGallery = [];  // [{ id, storage_url, storage_path, file_type }] — loaded from Firestore
+let removedMediaIds = [];  // Firestore media doc IDs queued for deletion on save
 let editingPersonId = null;
 let editingPerson = null;   // full person object while editing (for re-translation)
 let activeChart = null;     // Chart.js instance
@@ -102,9 +105,8 @@ function clearFormStatus() {
 
 async function loadDashboard() {
   try {
-    const [personSnap, mediaSnap, eventSnap] = await Promise.all([
+    const [personSnap, eventSnap] = await Promise.all([
       getDocs(tenantQuery(COLLECTIONS.persons)),
-      getDocs(tenantQuery(COLLECTIONS.media)),
       getDocs(
         tenantQuery(COLLECTIONS.events, orderBy("timestamp", "desc"), limit(200))
       ).catch(() => ({ docs: [] })),
@@ -118,7 +120,6 @@ async function loadDashboard() {
     const views = events.filter((e) => e.event_type === "profile_view").length;
 
     setText("statProfiles", personSnap.size);
-    setText("statMedia", mediaSnap.size);
     setText("statSearches", searches);
     setText("statViews", views);
 
@@ -570,14 +571,34 @@ async function handleSave(e) {
       } catch (e) { console.warn('[admin] bidirectional link failed:', e); }
     }
 
+    // If a new cover is staged while an old one exists, queue the old one for deletion
+    if (stagedCover && existingCover && !removedMediaIds.includes(existingCover.id)) {
+      removedMediaIds.push(existingCover.id);
+    }
+
+    // Delete removed media docs + storage files
+    for (const mediaId of removedMediaIds) {
+      try {
+        const mdoc = await getDoc(doc(db, COLLECTIONS.media, mediaId));
+        if (mdoc.exists()) {
+          const d = mdoc.data();
+          if (d.storage_path) {
+            try { await deleteObject(storageRef(storage, d.storage_path)); } catch {}
+          }
+          await deleteDoc(doc(db, COLLECTIONS.media, mediaId));
+        }
+      } catch (e) { console.warn("[admin] media delete failed:", e); }
+    }
+    removedMediaIds = [];
+
     const totalUploads = (stagedCover ? 1 : 0) + stagedFiles.length;
     if (totalUploads > 0) {
       setFormStatus(t("status.uploading", { n: totalUploads }), "info");
 
-      const existing = await getDocs(
+      const existingSnap = await getDocs(
         tenantQuery(COLLECTIONS.media, where("person_id", "==", personId))
       );
-      let order = existing.size;
+      let order = existingSnap.size;
 
       if (stagedCover) {
         setProgress(0);
@@ -618,6 +639,9 @@ function resetForm() {
   stagedFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl));
   stagedFiles = [];
   if (stagedCover) { URL.revokeObjectURL(stagedCover.previewUrl); stagedCover = null; }
+  existingCover = null;
+  existingGallery = [];
+  removedMediaIds = [];
   editingPersonId = null;
   renderPreviews();
   renderCoverPreview();
@@ -632,7 +656,7 @@ function resetForm() {
   clearFormStatus();
 }
 
-function loadForEdit(person) {
+async function loadForEdit(person) {
   editingPersonId = person.id;
   editingPerson = person;
   const set = (id, val) => {
@@ -655,6 +679,36 @@ function loadForEdit(person) {
     .filter(Boolean)
     .map((p) => ({ id: p.id, first_name: p.first_name, last_name: p.last_name }));
   renderFamilySelected();
+
+  // Reset media state
+  if (stagedCover) { URL.revokeObjectURL(stagedCover.previewUrl); stagedCover = null; }
+  stagedFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl));
+  stagedFiles = [];
+  existingCover = null;
+  existingGallery = [];
+  removedMediaIds = [];
+  renderCoverPreview();
+  renderPreviews();
+
+  // Load existing media from Firestore
+  try {
+    const mediaSnap = await getDocs(
+      tenantQuery(COLLECTIONS.media, where("person_id", "==", person.id))
+    );
+    for (const mdoc of mediaSnap.docs) {
+      const d = { id: mdoc.id, ...mdoc.data() };
+      if (d.role === "cover") {
+        existingCover = d;
+      } else {
+        existingGallery.push(d);
+      }
+    }
+    existingGallery.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+    renderCoverPreview();
+    renderPreviews();
+  } catch (err) {
+    console.warn("[admin] loadForEdit media failed:", err);
+  }
 
   const name = `${person.first_name} ${person.last_name}`;
   const saveBtn = document.getElementById("saveBtn");
@@ -770,24 +824,34 @@ function renderCoverPreview() {
   const wrap = document.getElementById("coverPreview");
   if (!wrap) return;
   wrap.innerHTML = "";
-  if (!stagedCover) return;
 
-  const img = Object.assign(document.createElement("img"), {
-    src: stagedCover.previewUrl,
-    alt: "Cover preview",
-    className: "cover-thumb",
-  });
-  const remove = Object.assign(document.createElement("button"), {
-    className: "cover-remove",
-    type: "button",
-    textContent: "✕ Remove",
-  });
-  remove.addEventListener("click", () => {
-    URL.revokeObjectURL(stagedCover.previewUrl);
-    stagedCover = null;
-    renderCoverPreview();
-  });
-  wrap.append(img, remove);
+  if (stagedCover) {
+    const img = Object.assign(document.createElement("img"), {
+      src: stagedCover.previewUrl, alt: "Cover preview", className: "cover-thumb",
+    });
+    const remove = Object.assign(document.createElement("button"), {
+      className: "cover-remove", type: "button", textContent: "✕ Remove",
+    });
+    remove.addEventListener("click", () => {
+      URL.revokeObjectURL(stagedCover.previewUrl);
+      stagedCover = null;
+      renderCoverPreview();
+    });
+    wrap.append(img, remove);
+  } else if (existingCover) {
+    const img = Object.assign(document.createElement("img"), {
+      src: existingCover.storage_url, alt: "Cover photo", className: "cover-thumb",
+    });
+    const remove = Object.assign(document.createElement("button"), {
+      className: "cover-remove", type: "button", textContent: "✕ Remove",
+    });
+    remove.addEventListener("click", () => {
+      removedMediaIds.push(existingCover.id);
+      existingCover = null;
+      renderCoverPreview();
+    });
+    wrap.append(img, remove);
+  }
 }
 
 function renderPreviews() {
@@ -795,6 +859,28 @@ function renderPreviews() {
   if (!wrap) return;
   wrap.innerHTML = "";
 
+  // Existing saved gallery items
+  existingGallery.forEach((item) => {
+    const thumb = document.createElement("div");
+    thumb.className = "media-thumb";
+
+    const mediaEl = item.file_type === "video"
+      ? Object.assign(document.createElement("video"), { src: item.storage_url, muted: true })
+      : Object.assign(document.createElement("img"),  { src: item.storage_url, alt: "Gallery" });
+
+    const badge  = Object.assign(document.createElement("span"), { className: "badge", textContent: item.file_type });
+    const remove = Object.assign(document.createElement("button"), { className: "remove", type: "button", textContent: "✕" });
+    remove.addEventListener("click", () => {
+      removedMediaIds.push(item.id);
+      existingGallery = existingGallery.filter((i) => i.id !== item.id);
+      renderPreviews();
+    });
+
+    thumb.append(mediaEl, badge, remove);
+    wrap.appendChild(thumb);
+  });
+
+  // Newly staged files (not yet uploaded)
   stagedFiles.forEach((item, i) => {
     const thumb = document.createElement("div");
     thumb.className = "media-thumb";
