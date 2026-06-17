@@ -192,11 +192,16 @@ body.has-tenant-bg * {
 /* Lift all screens + family page content above background */
 body.has-tenant-bg .screen,
 body.has-tenant-bg .f-stage,
-body.has-tenant-bg .f-loader,
+body.has-tenant-bg .f-loader {
+  z-index: 1;
+}
+body.has-tenant-bg .f-stage,
+body.has-tenant-bg .f-loader {
+  position: relative;
+}
 body.has-tenant-bg .m-btn-back,
 body.has-tenant-bg .m-btn-end {
-  position: relative;
-  z-index: 1;
+  z-index: 31;
 }
 
 /* index.html screens: transparent so background shows */
@@ -250,68 +255,15 @@ body.has-tenant-bg .f-member-years {
   background: #f0ece4;
 }
 
-/* ---- Top bar ---- */
+/* ---- Floating back button on search screen ---- */
 
-.search-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 28px;
-  background: #fff;
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
-  gap: 20px;
+.search-back-btn {
+  position: absolute;
+  bottom: clamp(20px, 3vh, 36px);
+  left: clamp(20px, 3vw, 36px);
+  top: auto;
+  z-index: 10;
 }
-
-.search-topbar-back {
-  min-width: 120px;
-  height: 54px;
-  font-size: 1.1rem;
-  padding: 0 20px;
-  background: transparent;
-  color: var(--color-text);
-  border: 1.5px solid var(--color-border);
-}
-
-.search-topbar-back:hover { background: rgba(0,0,0,0.04); }
-
-.search-topbar-title {
-  flex: 1;
-  text-align: center;
-}
-
-.search-topbar-title h2 {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--color-text);
-  margin: 0;
-}
-
-.search-topbar-title p {
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-  margin: 2px 0 0;
-}
-
-.search-topbar-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.search-topbar-end {
-  min-width: 120px;
-  height: 44px;
-  font-size: 1.0rem;
-  padding: 0 20px;
-  background: transparent;
-  color: var(--color-text-muted);
-  border: 1.5px solid var(--color-border);
-}
-
-.search-topbar-end:hover { background: rgba(0,0,0,0.04); }
 
 /* ---- Search input row ---- */
 
@@ -319,7 +271,7 @@ body.has-tenant-bg .f-member-years {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 22px 36px 16px;
+  padding: clamp(24px, 4vh, 40px) 36px 16px;
   background: transparent;
   flex-shrink: 0;
 }
@@ -696,7 +648,6 @@ body.has-tenant-bg .f-member-years {
 .m-btn-back,
 .m-btn-end {
   position: absolute;
-  top: 24px;
   z-index: 30;
   height: 56px;
   padding: 0 28px;
@@ -711,8 +662,8 @@ body.has-tenant-bg .f-member-years {
   transition: background 0.12s ease, box-shadow 0.12s ease;
 }
 
-.m-btn-back { left: 32px; display: flex; align-items: center; gap: 6px; }
-.m-btn-end  { right: 32px; }
+.m-btn-back { bottom: 32px; left: 32px; top: auto; display: flex; align-items: center; gap: 6px; }
+.m-btn-end  { top: 24px; right: 32px; }
 
 .m-btn-back:hover,
 .m-btn-end:hover { background: rgba(0,0,0,0.04); }

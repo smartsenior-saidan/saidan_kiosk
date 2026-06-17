@@ -14,11 +14,11 @@
     <meta name="apple-mobile-web-app-title" content="SmartSenior" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <meta name="theme-color" content="#0071e3" />
-    <link rel="stylesheet" href="css/style.css?v=2" />
+    <link rel="stylesheet" href="css/style.css?v=3" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" />
-    <link rel="stylesheet" href="css/kiosk.css?v=12" />
+    <link rel="stylesheet" href="css/kiosk.css?v=13" />
     <!-- Pins this kiosk to its memorial site (tenant). Runs before modules. -->
     <script src="js/config.js"></script>
   </head>
@@ -55,21 +55,8 @@
          ═══════════════════════════════════════════════════ -->
     <div id="screen-search" class="screen screen-search hidden">
 
-      <!-- Top bar -->
-      <div class="search-topbar">
-        <button class="search-topbar-back btn-secondary" id="backBtn" data-i18n="backBtn"></button>
-        <div class="search-topbar-title">
-          <h2 data-i18n="searchTitle"></h2>
-          <p  data-i18n="searchSub"></p>
-        </div>
-        <div class="search-topbar-right">
-          <div class="lang-switcher" id="langSwitcher">
-            <button class="lang-btn active" data-lang="ja">日本語</button>
-            <button class="lang-btn"        data-lang="en">English</button>
-          </div>
-          <button class="search-topbar-end" id="endVisitBtn" data-i18n="endVisit"></button>
-        </div>
-      </div>
+      <!-- Floating back button -->
+      <button class="m-btn-back search-back-btn" id="backBtn" data-i18n="backBtn"></button>
 
       <!-- Search input -->
       <div class="search-input-row">
@@ -367,16 +354,14 @@
 
       document.getElementById('startBtn').addEventListener('click', showSearch);
       document.getElementById('backBtn').addEventListener('click', showHome);
-      document.getElementById('endVisitBtn').addEventListener('click', showHome);
 
-      // ── Language switchers (home + search screens) ────────────────────
+      // ── Language switcher (home screen only) ─────────────────────────
       function handleLangClick(e) {
         const btn = e.target.closest('[data-lang]');
         if (!btn || btn.dataset.lang === currentLang) return;
         currentLang = btn.dataset.lang;
         applyLang();
       }
-      document.getElementById('langSwitcher').addEventListener('click', handleLangClick);
       document.getElementById('homeLangSwitcher').addEventListener('click', handleLangClick);
 
       // Re-measure on resize (handles Surface Pro zoom / orientation changes)
