@@ -33,10 +33,10 @@
 
       document.getElementById('fnavBack').textContent = ja ? '◀ 戻る' : '◀ Back';
       document.getElementById('fnavBack').addEventListener('click', () => {
-        window.location.href = 'index.html?restore=search';
+        window.location.href = `index.html?restore=search&site=${window.__ENV__.TENANT_ID}`;
       });
       document.getElementById('fnavEnd').textContent  = ja ? '参拝終了' : 'End Visit';
-      document.getElementById('fnavEnd').addEventListener('click', () => { window.location.href = 'index.html'; });
+      document.getElementById('fnavEnd').addEventListener('click', () => { window.location.href = `index.html?site=${window.__ENV__.TENANT_ID}`; });
       document.getElementById('fSubtitle').textContent = ja
         ? 'お参りする故人を選択してください'
         : 'Select a family member to view their memorial';
@@ -101,7 +101,7 @@
 
             membersEl.querySelectorAll('.f-member-btn').forEach((btn) => {
               btn.addEventListener('click', () => {
-                window.location.href = `profile.html?person=${btn.dataset.id}&via=family`;
+                window.location.href = `profile.html?person=${btn.dataset.id}&via=family&site=${window.__ENV__.TENANT_ID}`;
               });
             });
 

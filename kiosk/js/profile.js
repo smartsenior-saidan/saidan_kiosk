@@ -166,16 +166,16 @@ function wireNav(ja) {
       if (via === 'family' && personId) {
         // Go back to the family selector for this person
         const rootId = sessionStorage.getItem('kiosk_person') || personId;
-        window.location.href = `family.html?person=${rootId}`;
+        window.location.href = `family.html?person=${rootId}&site=${window.__ENV__.TENANT_ID}`;
       } else {
-        window.location.href = 'index.html?restore=search';
+        window.location.href = `index.html?restore=search&site=${window.__ENV__.TENANT_ID}`;
       }
     });
   }
   const endBtn = document.getElementById('pnavEnd');
   if (endBtn) {
     endBtn.textContent = ja ? '参拝終了' : 'End Visit';
-    endBtn.addEventListener('click', () => { window.location.href = 'index.html'; });
+    endBtn.addEventListener('click', () => { window.location.href = `index.html?site=${window.__ENV__.TENANT_ID}`; });
   }
 }
 
@@ -333,7 +333,7 @@ async function renderFamily(person, ja) {
 
   familyList.querySelectorAll('.m-family-card').forEach((btn) => {
     btn.addEventListener('click', () => {
-      window.location.href = `profile.html?person=${btn.dataset.id}`;
+      window.location.href = `profile.html?person=${btn.dataset.id}&site=${window.__ENV__.TENANT_ID}`;
     });
   });
 
