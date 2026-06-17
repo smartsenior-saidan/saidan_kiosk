@@ -356,52 +356,6 @@ function renderPerson(person, media) {
   }
 }
 
-// ── Family members ────────────────────────────────────────────────────────
-
-async function renderFamily(person, ja) {
-  const ids = person.related_persons;
-  if (!ids || !ids.length) return;
-
-  const familyWrap = document.getElementById("pFamily");
-  const familyList = document.getElementById("pFamilyList");
-  const familyTitle = document.getElementById("pFamilyTitle");
-  if (!familyWrap || !familyList) return;
-
-  if (familyTitle) familyTitle.textContent = ja ? 'ご家族' : 'Family Members';
-
-  const fetches = ids.map((id) => getDoc(doc(db, COLLECTIONS.persons, id)));
-  const snaps = await Promise.all(fetches);
-
-  const members = snaps
-    .filter((s) => s.exists())
-    .map((s) => ({ id: s.id, ...s.data() }));
-
-  if (!members.length) return;
-
-  familyList.innerHTML = members.map((m) => {
-    const name = ja
-      ? `${m.last_name || ''}　${m.first_name || ''}`.trim()
-      : `${m.first_name || ''} ${m.last_name || ''}`.trim();
-    const years = m.birth_date || m.death_date
-      ? `${(m.birth_date || '').slice(0,4) || '?'} – ${(m.death_date || '').slice(0,4) || '?'}`
-      : '';
-    return `
-      <button class="m-family-card" data-id="${m.id}">
-        <div class="m-family-initials">${((m.last_name||'').charAt(0)+(m.first_name||'').charAt(0)).toUpperCase()||'✦'}</div>
-        <div class="m-family-name">${name}</div>
-        ${years ? `<div class="m-family-years">${years}</div>` : ''}
-      </button>`;
-  }).join('');
-
-  familyList.querySelectorAll('.m-family-card').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      window.location.href = `profile.html?person=${btn.dataset.id}&site=${window.__ENV__.TENANT_ID}`;
-    });
-  });
-
-  familyWrap.classList.remove('hidden');
-}
-
 // ── Bootstrap ─────────────────────────────────────────────────────────────
 
 export async function initProfileScreen() {
@@ -440,7 +394,6 @@ export async function initProfileScreen() {
       const media = await loadMedia(personId);
       renderPerson(person, media);
       document.getElementById('pMain')?.classList.remove('hidden');
-      await renderFamily(person, lang !== 'en');
     }
 
     logProfileView(person.id);
