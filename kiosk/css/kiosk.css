@@ -186,7 +186,13 @@ body.has-tenant-bg::after {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background: rgba(0, 0, 0, 0.38);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+/* Tenant font: しっぽり明朝 */
+body.has-tenant-bg,
+body.has-tenant-bg * {
+  font-family: 'Shippori Mincho', 'Yu Mincho', '游明朝', serif !important;
 }
 
 /* Lift all screens above the background layers */
