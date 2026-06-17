@@ -15,7 +15,7 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <meta name="theme-color" content="#0071e3" />
     <link rel="stylesheet" href="css/style.css?v=2" />
-    <link rel="stylesheet" href="css/kiosk.css?v=6" />
+    <link rel="stylesheet" href="css/kiosk.css?v=7" />
     <!-- Pins this kiosk to its memorial site (tenant). Runs before modules. -->
     <script src="js/config.js"></script>
   </head>
@@ -85,19 +85,24 @@
         <button class="search-go-btn" id="searchButton" data-i18n="searchBtn"></button>
       </div>
 
-      <!-- Results -->
-      <div class="search-results-panel kiosk-scroll" id="results" aria-live="polite"></div>
+      <!-- Body: keyboard (left) + results (right) -->
+      <div class="search-body">
 
-      <!-- Keyboard — compact floating container -->
-      <div class="keyboard-area" id="keyboardArea">
-        <div class="kb-body">
-          <div class="kb-main"    id="kbMain"></div>
-          <div class="kb-special" id="kbSpecial"></div>
+        <!-- Keyboard -->
+        <div class="keyboard-area" id="keyboardArea">
+          <div class="kb-body">
+            <div class="kb-main"    id="kbMain"></div>
+            <div class="kb-special" id="kbSpecial"></div>
+          </div>
+          <div class="kb-bottom">
+            <button class="kb-space"     id="kbSpace"    data-i18n="spaceBtn"></button>
+            <button class="kb-clear-all" id="kbClearAll" data-i18n="clearAllBtn"></button>
+          </div>
         </div>
-        <div class="kb-bottom">
-          <button class="kb-space"     id="kbSpace"    data-i18n="spaceBtn"></button>
-          <button class="kb-clear-all" id="kbClearAll" data-i18n="clearAllBtn"></button>
-        </div>
+
+        <!-- Results -->
+        <div class="search-results-panel kiosk-scroll" id="results" aria-live="polite"></div>
+
       </div>
 
     </div>
@@ -320,12 +325,7 @@
       const resultsEl     = document.getElementById('results');
 
       function measureLayout() {
-        const topH   = document.querySelector('.search-topbar').offsetHeight;
-        const inputH = document.querySelector('.search-input-row').offsetHeight;
-        const kbH    = keyboardArea.offsetHeight + 20; // +16px bottom gap + 4px buffer
-        searchScreen2.style.setProperty('--topbar-h',    topH   + 'px');
-        searchScreen2.style.setProperty('--input-row-h', inputH + 'px');
-        searchScreen2.style.setProperty('--kb-h',        kbH    + 'px');
+        // Layout is now handled by flex — nothing to calculate
       }
 
       // ── Keyboard: always visible on search screen ─────────────────────

@@ -295,17 +295,29 @@ html.kiosk body {
   box-shadow: 0 2px 10px rgba(0, 113, 227, 0.22);
 }
 
-/* ---- Results panel — inline, below search input ---- */
+/* ---- Body row: keyboard left + results right ---- */
+
+.search-body {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 12px 20px 20px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ---- Results panel — right column ---- */
 
 .search-results-panel {
   display: none;
-  width: 100%;
-  padding: 8px 20px 12px;
+  width: clamp(280px, 34vw, 480px);
+  padding: 8px 0 12px;
   overflow-y: auto;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  /* --kb-h is measured dynamically in JS; fallback 300px covers Surface Pro */
-  max-height: calc(100vh - var(--topbar-h, 125px) - var(--input-row-h, 80px) - var(--kb-h, 300px));
+  align-self: stretch;
 }
 
 .search-results-panel.panel-open {
@@ -430,20 +442,11 @@ html.kiosk body {
   flex: 1.4;
 }
 
-/* ---- Keyboard area — compact card, avoids results panel ---- */
+/* ---- Keyboard area — left column in search-body ---- */
 
 .keyboard-area {
-  /* --results-w is set by JS when the results panel opens (0 when closed) */
-  --_avail: calc(100vw - var(--results-w, 0px) - 24px);
-  --_w:     min(1060px, var(--_avail));
-  --_left:  max(12px, calc((100vw - var(--results-w, 0px) - var(--_w)) / 2));
-
-  position: fixed;
-  left: var(--_left);
-  width: var(--_w);
-  bottom: 16px;
-  /* height is driven by key heights — no top constraint */
-  z-index: 60;
+  flex-shrink: 0;
+  width: clamp(400px, 58vw, 860px);
   background: #c7c0b4;
   border: 1px solid #b8b0a4;
   border-radius: 18px;
