@@ -180,14 +180,8 @@ body.has-tenant-bg::before {
   background-repeat: no-repeat;
 }
 
-/* Dim overlay so text/UI stays legible over any photo */
-body.has-tenant-bg::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  background: rgba(0, 0, 0, 0.18);
-}
+/* No overlay — background is light, content uses dark text */
+body.has-tenant-bg::after { content: none; }
 
 /* Tenant font: しっぽり明朝 */
 body.has-tenant-bg,
@@ -195,28 +189,57 @@ body.has-tenant-bg * {
   font-family: 'Shippori Mincho', 'Yu Mincho', '游明朝', serif !important;
 }
 
-/* Lift all screens above the background layers */
+/* Lift all screens + family page content above background */
+body.has-tenant-bg .screen,
+body.has-tenant-bg .f-stage,
+body.has-tenant-bg .f-loader,
+body.has-tenant-bg .m-btn-back,
+body.has-tenant-bg .m-btn-end {
+  position: relative;
+  z-index: 1;
+}
+
+/* index.html screens: transparent so background shows */
 body.has-tenant-bg .screen {
   position: fixed;
-  z-index: 1;
   background: transparent;
 }
 
-/* Home screen: make cards/text work on dark background */
+/* Home screen: dark text on light background */
 body.has-tenant-bg .screen-home {
   background: transparent;
-  color: #fff;
+  color: #1a1a1a;
 }
-body.has-tenant-bg .home-greeting-main,
+body.has-tenant-bg .home-greeting-main {
+  color: #1a1a1a;
+}
 body.has-tenant-bg .home-greeting-sub,
 body.has-tenant-bg .home-start-hint,
 body.has-tenant-bg .home-ic-note {
-  color: rgba(255, 255, 255, 0.92);
+  color: #333;
 }
 
-/* Search screen: frosted-glass top bar + keyboard background stay intact */
+/* Search screen stays intact */
 body.has-tenant-bg .screen-search {
   background: transparent;
+}
+
+/* Family page: dark text, transparent stage */
+body.has-tenant-bg .f-stage {
+  background: transparent;
+}
+body.has-tenant-bg .f-family-name,
+body.has-tenant-bg .f-subtitle {
+  color: #1a1a1a;
+}
+body.has-tenant-bg .f-member-btn {
+  background: rgba(255, 255, 255, 0.72);
+  color: #1a1a1a;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+body.has-tenant-bg .f-member-name,
+body.has-tenant-bg .f-member-years {
+  color: #1a1a1a;
 }
 
 /* ============================================================
