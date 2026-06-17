@@ -322,16 +322,10 @@
         keyboardArea.classList.remove('open');
       }
 
-      // ── Results panel: auto show/hide; update keyboard position var ───
-      function setResultsWidth(open) {
-        const w = open ? Math.min(380, window.innerWidth * 0.44) : 0;
-        searchScreen2.style.setProperty('--results-w', w + 'px');
-      }
-
+      // ── Results panel: auto show/hide ────────────────────────────────
       new MutationObserver(() => {
         const hasResults = resultsEl.children.length > 0;
         resultsEl.classList.toggle('panel-open', hasResults);
-        setResultsWidth(hasResults);
       }).observe(resultsEl, { childList: true });
 
       // ── Screen navigation ─────────────────────────────────────────────
