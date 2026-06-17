@@ -778,6 +778,9 @@ html.kiosk body {
     0 2px 4px rgba(0, 0, 0, 0.06),
     0 16px 48px rgba(0, 0, 0, 0.14);
   overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .p-slides { position: absolute; inset: 0; }
