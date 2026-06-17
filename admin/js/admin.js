@@ -976,7 +976,10 @@ export function initAdminPortal() {
 
   // Sidebar nav
   document.querySelectorAll("[data-section]").forEach((el) => {
-    el.addEventListener("click", () => showSection(el.dataset.section));
+    el.addEventListener("click", () => {
+      if (el.dataset.section === "new-profile") resetForm();
+      showSection(el.dataset.section);
+    });
   });
 
   // Mobile sidebar toggle
