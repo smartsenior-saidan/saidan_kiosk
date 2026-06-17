@@ -15,7 +15,7 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <meta name="theme-color" content="#0071e3" />
     <link rel="stylesheet" href="css/style.css?v=2" />
-    <link rel="stylesheet" href="css/kiosk.css?v=9" />
+    <link rel="stylesheet" href="css/kiosk.css?v=10" />
     <!-- Pins this kiosk to its memorial site (tenant). Runs before modules. -->
     <script src="js/config.js"></script>
   </head>
@@ -117,6 +117,8 @@
 
     <script type="module">
       import { initSearchScreen } from "./js/search.js";
+      import { applyTenantBackground } from "./js/tenant-bg.js";
+      applyTenantBackground();
 
       // ── Translations ──────────────────────────────────────────────────
       const STRINGS = {

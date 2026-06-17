@@ -14,6 +14,7 @@ const APP_SHELL = [
   './js/profile.js',
   './js/firebase.js',
   './js/analytics.js',
+  './js/tenant-bg.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];

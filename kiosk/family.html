@@ -12,7 +12,7 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <meta name="theme-color" content="#0071e3" />
     <link rel="stylesheet" href="css/style.css?v=2" />
-    <link rel="stylesheet" href="css/kiosk.css?v=9" />
+    <link rel="stylesheet" href="css/kiosk.css?v=10" />
     <script src="js/config.js"></script>
   </head>
   <body class="family-page lang-ja">
@@ -34,6 +34,8 @@
 
     <script type="module">
       import { getPersonById, getDocs, getDoc, doc, db, where, tenantQuery, COLLECTIONS } from "./js/firebase.js";
+      import { applyTenantBackground } from "./js/tenant-bg.js";
+      applyTenantBackground();
 
       const lang = sessionStorage.getItem('kiosk_lang') || 'ja';
       const ja   = lang !== 'en';

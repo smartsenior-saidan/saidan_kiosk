@@ -161,6 +161,59 @@ html.kiosk body {
 }
 
 /* ============================================================
+   TENANT BACKGROUND — applied to body on index + family pages
+   ============================================================ */
+
+body.has-tenant-bg {
+  --tenant-bg-url: none;
+}
+
+/* Full-bleed background layer behind everything */
+body.has-tenant-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--tenant-bg-url);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Dim overlay so text/UI stays legible over any photo */
+body.has-tenant-bg::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+/* Lift all screens above the background layers */
+body.has-tenant-bg .screen {
+  position: fixed;
+  z-index: 1;
+  background: transparent;
+}
+
+/* Home screen: make cards/text work on dark background */
+body.has-tenant-bg .screen-home {
+  background: transparent;
+  color: #fff;
+}
+body.has-tenant-bg .home-greeting-main,
+body.has-tenant-bg .home-greeting-sub,
+body.has-tenant-bg .home-start-hint,
+body.has-tenant-bg .home-ic-note {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* Search screen: frosted-glass top bar + keyboard background stay intact */
+body.has-tenant-bg .screen-search {
+  background: transparent;
+}
+
+/* ============================================================
    SEARCH SCREEN
    ============================================================ */
 
