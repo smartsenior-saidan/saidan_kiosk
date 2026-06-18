@@ -1,9 +1,7 @@
 // slideshow.js — auto-advancing photo slideshow with touch-friendly controls.
 //
 // Opens a fullscreen overlay over the profile page. Play/pause, prev/next,
-// keyboard arrows, and a counter. Logs a slideshow_play event on start.
-
-import { logSlideshowPlay } from "./analytics.js";
+// keyboard arrows, and a counter.
 
 const ADVANCE_MS = 4500;
 
@@ -30,7 +28,6 @@ export class Slideshow {
     document.body.appendChild(this.overlay);
     this._show(this.index);
     this.play();
-    if (this.personId) logSlideshowPlay(this.personId);
   }
 
   close() {

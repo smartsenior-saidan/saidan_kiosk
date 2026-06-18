@@ -16,8 +16,6 @@ import {
   getDocs,
   collection,
   where,
-  orderBy,
-  limit,
   tenantQuery,
   withTenant,
   serverTimestamp,
@@ -41,17 +39,11 @@ let existingGallery = [];  // [{ id, storage_url, storage_path, file_type }] —
 let removedMediaIds = [];  // Firestore media doc IDs queued for deletion on save
 let editingPersonId = null;
 let editingPerson = null;   // full person object while editing (for re-translation)
-let activeChart = null;     // Chart.js instance
 let allProfiles = [];       // cached for client-side filtering
 let currentSection = "dashboard";
 let sortField = "last_name"; // last_name | first_name | death_date | created_at
 let sortDir   = "asc";       // asc | desc
 let selectedRelated = [];   // array of { id, first_name, last_name }
-
-/** Localized label for a kiosk event type. */
-function eventLabel(type) {
-  return t(`event.${type}`);
-}
 
 // ── Section navigation ───────────────────────────────────────────────────────
 
@@ -107,29 +99,11 @@ function clearFormStatus() {
 
 async function loadDashboard() {
   try {
-    const [personSnap, eventSnap] = await Promise.all([
-      getDocs(tenantQuery(COLLECTIONS.persons)),
-      getDocs(
-        tenantQuery(COLLECTIONS.events, orderBy("timestamp", "desc"), limit(200))
-      ).catch(() => ({ docs: [] })),
-    ]);
-
-    const events = eventSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const personSnap = await getDocs(tenantQuery(COLLECTIONS.persons));
     const persons = personSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
     // Stat cards
-    const searches = events.filter((e) => e.event_type === "search_query").length;
-    const views = events.filter((e) => e.event_type === "profile_view").length;
-
     setText("statProfiles", personSnap.size);
-    setText("statSearches", searches);
-    setText("statViews", views);
-
-    // Chart
-    renderEventChart(events);
-
-    // Activity feed
-    renderActivityFeed(events.slice(0, 25), persons);
 
     // Recent profiles (newest first by created_at)
     const sorted = [...persons].sort((a, b) => {
@@ -144,126 +118,6 @@ async function loadDashboard() {
       setStatus(t("status.indexNeeded"), "error");
     }
   }
-}
-
-// ── Event chart ──────────────────────────────────────────────────────────────
-
-const EVENT_COLORS = [
-  "#3B82F6",
-  "#14B8A6",
-  "#8B5CF6",
-  "#F97316",
-  "#EAB308",
-  "#10B981",
-];
-
-function renderEventChart(events) {
-  const canvas = document.getElementById("eventChart");
-  if (!canvas || !window.Chart) return;
-
-  const counts = {};
-  for (const e of events) {
-    counts[e.event_type] = (counts[e.event_type] || 0) + 1;
-  }
-
-  const labels = Object.keys(counts).map((k) => eventLabel(k));
-  const data = Object.values(counts);
-
-  if (activeChart) activeChart.destroy();
-
-  activeChart = new window.Chart(canvas, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: t("chart.events"),
-          data,
-          backgroundColor: EVENT_COLORS,
-          borderRadius: 8,
-          borderSkipped: false,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      indexAxis: "y",
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => ` ${ctx.parsed.x} event${ctx.parsed.x !== 1 ? "s" : ""}`,
-          },
-        },
-      },
-      scales: {
-        x: {
-          grid: { color: "rgba(0,0,0,0.06)" },
-          ticks: { color: "#6E6E73", font: { size: 12 } },
-        },
-        y: {
-          grid: { display: false },
-          ticks: { color: "#6E6E73", font: { size: 12 } },
-        },
-      },
-    },
-  });
-}
-
-// ── Activity feed ─────────────────────────────────────────────────────────────
-
-const BADGE_CLASS = {
-  search_query: "badge-search",
-  profile_view: "badge-view",
-  slideshow_play: "badge-slideshow",
-  video_play: "badge-video",
-  nfc_tap: "badge-nfc",
-  qr_scan: "badge-qr",
-};
-
-function relativeTime(ts) {
-  if (!ts) return "";
-  const date = ts.toDate ? ts.toDate() : new Date(ts);
-  const diff = (Date.now() - date.getTime()) / 1000;
-  if (diff < 60) return "just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-}
-
-function renderActivityFeed(events, persons) {
-  const list = document.getElementById("activityList");
-  if (!list) return;
-
-  if (!events.length) {
-    list.innerHTML = `<li class="activity-empty">${t("empty.noActivity")}</li>`;
-    return;
-  }
-
-  const personMap = {};
-  for (const p of persons) personMap[p.id] = `${p.first_name || ""} ${p.last_name || ""}`.trim();
-
-  list.innerHTML = events
-    .map((e) => {
-      const label = eventLabel(e.event_type);
-      const badge = BADGE_CLASS[e.event_type] || "";
-      const name = e.person_id ? personMap[e.person_id] || e.person_id : "";
-      const desc = e.query
-        ? `"${e.query}"`
-        : name
-        ? name
-        : e.device_id || "";
-      return `
-        <li class="activity-item">
-          <span class="activity-badge ${badge}">${label}</span>
-          <div class="activity-body">
-            <div class="activity-desc">${desc}</div>
-            <div class="activity-time">${relativeTime(e.timestamp)}</div>
-          </div>
-        </li>`;
-    })
-    .join("");
 }
 
 // ── Recent profiles (dashboard mini-table) ────────────────────────────────────

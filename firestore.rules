@@ -53,13 +53,6 @@ service cloud.firestore {
       }
     }
 
-    // ── Analytics events ────────────────────────────────────────────────────
-    match /search_events/{id} {
-      allow create:        if request.resource.data.tenant_id is string;
-      allow read:          if ownsTenant(resource.data.tenant_id);
-      allow update, delete: if false;
-    }
-
     // ── Kiosk devices ───────────────────────────────────────────────────────
     match /kiosk_devices/{id} {
       allow read:  if true;

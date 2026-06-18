@@ -3,14 +3,9 @@
 
 import {
   getDocs,
-  getDoc,
-  doc,
-  db,
-  COLLECTIONS,
   getPersonById,
   personMediaCollection,
 } from "./firebase.js";
-import { logProfileView, logArrivalSource, logVideoPlay } from "./analytics.js";
 
 const ADVANCE_MS = 6000;
 
@@ -321,10 +316,6 @@ function renderPerson(person, media) {
     const video = document.getElementById('pVideo');
     if (video) {
       video.src = videos[0].storage_url;
-      let logged = false;
-      video.addEventListener('play', () => {
-        if (!logged) { logVideoPlay(person.id); logged = true; }
-      });
       show('pVideoWrap');
       show('pBottom');
     }
@@ -396,8 +387,6 @@ export async function initProfileScreen() {
       document.getElementById('pMain')?.classList.remove('hidden');
     }
 
-    logProfileView(person.id);
-    logArrivalSource(person.id);
   } catch (err) {
     console.error('[profile] failed:', err);
     errorScreen(ja ? '読み込みに失敗しました。' : 'Something went wrong.');

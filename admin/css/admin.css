@@ -369,16 +369,6 @@
   margin: 0;
 }
 
-/* ---- Dashboard grid ------------------------------------------------------- */
-
-.dash-grid {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 16px;
-}
-
-@media (max-width: 900px) { .dash-grid { grid-template-columns: 1fr; } }
-
 /* ---- Card ----------------------------------------------------------------- */
 
 .card {
@@ -433,63 +423,6 @@
 }
 
 .btn-link:hover { opacity: 0.75; background: none; }
-
-/* ---- Chart ---------------------------------------------------------------- */
-
-.chart-wrap {
-  position: relative;
-  height: 260px;
-}
-
-/* ---- Activity list -------------------------------------------------------- */
-
-.activity-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.activity-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 9px 0;
-  border-bottom: 1px solid var(--color-border);
-  font-size: 0.85rem;
-}
-
-.activity-item:last-child { border-bottom: none; }
-
-.activity-badge {
-  flex-shrink: 0;
-  padding: 0.2em 0.5em;
-  border-radius: 6px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.badge-search    { background: #DBEAFE; color: #1D4ED8; }
-.badge-view      { background: #CCFBF1; color: #0F766E; }
-.badge-slideshow { background: #EDE9FE; color: #6D28D9; }
-.badge-video     { background: #FFEDD5; color: #C2410C; }
-.badge-nfc       { background: #FEF9C3; color: #A16207; }
-.badge-qr        { background: #DCFCE7; color: #15803D; }
-
-.activity-body  { flex: 1; }
-.activity-desc  { color: var(--color-text); line-height: 1.3; }
-.activity-time  { color: var(--color-text-muted); font-size: 0.75rem; margin-top: 2px; }
-
-.activity-empty {
-  display: flex;
-  justify-content: center;
-  padding: 24px 0;
-  color: var(--color-text-muted);
-  font-size: 0.88rem;
-}
 
 /* ---- Mini table ----------------------------------------------------------- */
 

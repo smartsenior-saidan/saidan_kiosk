@@ -13,7 +13,6 @@ const APP_SHELL = [
   './js/search.js',
   './js/profile.js',
   './js/firebase.js',
-  './js/analytics.js',
   './js/tenant-bg.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -41,7 +40,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
-  // Always go to the network for Firebase, analytics, and external CDNs
+  // Always go to the network for Firebase and external CDNs
   if (
     url.hostname.includes('firebase') ||
     url.hostname.includes('google') ||
