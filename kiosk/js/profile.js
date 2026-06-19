@@ -198,7 +198,7 @@ function renderEmbed(person) {
   document.documentElement.lang = lang;
 
   const displayName = ja
-    ? `${person.last_name || ''}　${person.first_name || ''}`.trim()
+    ? `${person.last_name || ''}${person.first_name || ''}`.trim()
     : `${person.first_name || ''} ${person.last_name || ''}`.trim();
   document.title = `${displayName.replace('　', ' ')} — SmartSenior`;
 
@@ -222,7 +222,7 @@ function renderPerson(person, media) {
 
   // Name
   const displayName = ja
-    ? `${person.last_name || ''}　${person.first_name || ''}`.trim()
+    ? `${person.last_name || ''}${person.first_name || ''}`.trim()
     : `${person.first_name || ''} ${person.last_name || ''}`.trim();
   document.title = `${displayName.replace('　', ' ')} — SmartSenior`;
   set('pName', displayName);
@@ -247,13 +247,6 @@ function renderPerson(person, media) {
     set('pAgeLabel', ja ? '享年' : 'Age');
     set('pAge', ja ? `${toKanji(age)}歳` : String(age));
     show('pAgeBlock');
-  }
-
-  // Plot
-  if (person.plot) {
-    set('pPlotLabel', ja ? '区画' : 'Plot');
-    set('pPlot', person.plot);
-    show('pPlotBlock');
   }
 
   // Photos or initials placeholder
@@ -286,28 +279,9 @@ function renderPerson(person, media) {
 
   // Memorial audio
   if (audios.length) {
-    const audio   = document.getElementById('pAudio');
-    const btn     = document.getElementById('pAudioBtn');
-    const icon    = document.getElementById('pAudioIcon');
-    const label   = document.getElementById('pAudioLabel');
-    if (audio && btn) {
+    const audio = document.getElementById('pAudio');
+    if (audio) {
       audio.src = audios[0].storage_url;
-      btn.addEventListener('click', () => {
-        if (audio.paused) {
-          audio.play();
-          icon.textContent  = '⏸';
-          label.textContent = ja ? '一時停止' : 'Pause';
-        } else {
-          audio.pause();
-          icon.textContent  = '▶';
-          label.textContent = ja ? '音楽を再生' : 'Play Music';
-        }
-      });
-      audio.addEventListener('ended', () => {
-        icon.textContent  = '▶';
-        label.textContent = ja ? '音楽を再生' : 'Play Music';
-      });
-      if (label) label.textContent = ja ? '音楽を再生' : 'Play Music';
       show('pAudioWrap');
       show('pBottom');
     }

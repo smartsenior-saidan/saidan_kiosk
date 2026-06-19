@@ -674,7 +674,7 @@ body.has-tenant-bg .f-member-years {
   transition: background 0.12s ease, box-shadow 0.12s ease;
 }
 
-.m-btn-back { bottom: 32px; left: 32px; top: auto; display: flex; align-items: center; gap: 6px; }
+.m-btn-back { top: 24px; left: 32px; bottom: auto; display: flex; align-items: center; gap: 6px; }
 .m-btn-end  { top: 24px; right: 32px; }
 
 /* Slideshow button — inline, centered below the family member list */
@@ -748,7 +748,7 @@ body.has-tenant-bg .f-member-years {
   align-items: center;
   justify-content: center;
   gap: clamp(24px, 5vw, 80px);
-  padding: clamp(80px, 9vh, 100px) clamp(40px, 5vw, 70px) clamp(110px, 13vh, 140px);
+  padding: clamp(96px, 11vh, 112px) clamp(40px, 5vw, 70px) clamp(80px, 9vh, 100px);
   opacity: 0;
   animation: m-fadein 0.9s ease 0.1s forwards;
 }
@@ -780,23 +780,27 @@ body.has-tenant-bg .f-member-years {
 .m-side {
   flex: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   gap: clamp(18px, 2.5vw, 40px);
   align-self: stretch;
   padding: 40px 0;
 }
 
-.m-side-right { align-items: flex-start; }
-.m-side-left  { align-items: flex-start; }
+.m-side-right { align-items: center; }
+.m-side-left  { align-items: center; }
 
 .lang-ja .m-side-left { flex-direction: row-reverse; }
 
 .lang-ja .m-name,
-.lang-ja .m-kaimyo,
-.lang-ja .m-info {
+.lang-ja .m-kaimyo {
   writing-mode: vertical-rl;
   text-orientation: upright;
+}
+
+.lang-ja .m-info {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
 }
 
 .m-name {
@@ -980,6 +984,11 @@ body.has-tenant-bg .f-member-years {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.m-audio-wrap audio {
+  width: clamp(320px, 52vw, 640px);
+  border-radius: 8px;
 }
 
 .m-audio-btn {
