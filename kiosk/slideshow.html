@@ -448,22 +448,28 @@
 
       // ── QR / barcode scanner (HID keyboard emulator) ──────────────────
       (function () {
+        function tryNavigate(scanned) {
+          const s = scanned.trim();
+          if (s.includes('family.html') && s.includes('person=')) {
+            try { window.location.href = new URL(s).href; } catch (_) {}
+          }
+        }
         let buf = '';
         let timer = null;
         const TIMEOUT = 150;
         document.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
             clearTimeout(timer);
-            const scanned = buf.trim();
-            buf = '';
-            if (scanned.includes('family.html') && scanned.includes('person=')) {
-              try { window.location.href = new URL(scanned).href; } catch (_) {}
-            }
+            const scanned = buf; buf = '';
+            tryNavigate(scanned);
           } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
             buf += e.key;
             clearTimeout(timer);
             timer = setTimeout(() => { buf = ''; }, TIMEOUT);
           }
+        });
+        document.addEventListener('paste', (e) => {
+          tryNavigate((e.clipboardData || window.clipboardData).getData('text'));
         });
       })();
     </script>

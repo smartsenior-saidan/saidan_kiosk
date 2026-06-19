@@ -387,30 +387,37 @@
       }
 
       // ── QR / barcode scanner (HID keyboard emulator) ──────────────────
-      // Physical scanners like the QK30 act as keyboards: they type the URL
-      // rapidly then send Enter. We buffer fast keystrokes and navigate on Enter.
+      // Scanners act as keyboards (keystroke mode) or paste the URL directly.
+      // We handle both.
       (function () {
+        function tryNavigate(scanned) {
+          const s = scanned.trim();
+          if (s.includes('family.html') && s.includes('person=')) {
+            try { window.location.href = new URL(s).href; } catch (_) {}
+          }
+        }
+
+        // Keystroke mode: scanner types char-by-char then sends Enter
         let buf = '';
         let timer = null;
-        const TIMEOUT = 150; // ms — scanners finish in < 50ms; humans take 300ms+
-
+        const TIMEOUT = 150;
         document.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
             clearTimeout(timer);
-            const scanned = buf.trim();
+            const scanned = buf;
             buf = '';
-            if (scanned.includes('family.html') && scanned.includes('person=')) {
-              // Validate it at least looks like a URL before navigating
-              try {
-                const url = new URL(scanned);
-                window.location.href = url.href;
-              } catch (_) {}
-            }
+            tryNavigate(scanned);
           } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
             buf += e.key;
             clearTimeout(timer);
             timer = setTimeout(() => { buf = ''; }, TIMEOUT);
           }
+        });
+
+        // Paste mode: some scanners paste the full URL at once
+        document.addEventListener('paste', (e) => {
+          const text = (e.clipboardData || window.clipboardData).getData('text');
+          tryNavigate(text);
         });
       })();
     </script>
