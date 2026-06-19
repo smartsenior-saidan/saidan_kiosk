@@ -108,8 +108,7 @@
     <script type="module">
       import { initProfileScreen } from "./js/profile.js";
       import { applyTenantBackground } from "./js/tenant-bg.js";
-      applyTenantBackground();
-      initProfileScreen();
+      applyTenantBackground().then(() => initProfileScreen());
     </script>
   </body>
 </html>

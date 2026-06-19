@@ -37,6 +37,9 @@ let stagedCover = null;    // { file, previewUrl } — new cover upload
 let existingCover = null;  // { id, storage_url, storage_path } — loaded from Firestore
 let existingGallery = [];  // [{ id, storage_url, storage_path, file_type }] — loaded from Firestore
 let removedMediaIds = [];  // Firestore media doc IDs queued for deletion on save
+let stagedBg = null;       // { file, previewUrl } — new background upload
+let existingBgUrl = null;  // string URL stored on person doc
+let existingBgPath = null; // string Storage path for deletion
 let editingPersonId = null;
 let editingPerson = null;   // full person object while editing (for re-translation)
 let allProfiles = [];       // cached for client-side filtering
@@ -494,6 +497,25 @@ async function handleSave(e) {
     }
     removedMediaIds = [];
 
+    // Background image — upload new or delete removed
+    if (stagedBg) {
+      if (existingBgPath) {
+        try { await deleteObject(storageRef(storage, existingBgPath)); } catch {}
+      }
+      setProgress(0);
+      const { url, path } = await uploadOne(stagedBg.file, personId, setProgress);
+      await updateDoc(doc(db, COLLECTIONS.persons, personId), {
+        background_url: url,
+        background_path: path,
+      });
+    } else if (existingBgPath && !existingBgUrl) {
+      try { await deleteObject(storageRef(storage, existingBgPath)); } catch {}
+      await updateDoc(doc(db, COLLECTIONS.persons, personId), {
+        background_url: null,
+        background_path: null,
+      });
+    }
+
     const totalUploads = (stagedCover ? 1 : 0) + stagedFiles.length;
     if (totalUploads > 0) {
       setFormStatus(t("status.uploading", { n: totalUploads }), "info");
@@ -540,12 +562,16 @@ function resetForm() {
   stagedFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl));
   stagedFiles = [];
   if (stagedCover) { URL.revokeObjectURL(stagedCover.previewUrl); stagedCover = null; }
+  if (stagedBg)    { URL.revokeObjectURL(stagedBg.previewUrl);    stagedBg = null; }
   existingCover = null;
   existingGallery = [];
+  existingBgUrl = null;
+  existingBgPath = null;
   removedMediaIds = [];
   editingPersonId = null;
   renderPreviews();
   renderCoverPreview();
+  renderBgPreview();
   editingPerson = null;
   selectedRelated = [];
   renderFamilySelected();
@@ -572,6 +598,8 @@ async function loadForEdit(person) {
   set("plotRow",        person.plot_row);
   set("biography",      person.biography);
   set("presentationUrl", person.presentation_url);
+  existingBgUrl  = person.background_url  || null;
+  existingBgPath = person.background_path || null;
 
   // Restore family links
   selectedRelated = (person.related_persons || [])
@@ -582,12 +610,14 @@ async function loadForEdit(person) {
 
   // Reset media state
   if (stagedCover) { URL.revokeObjectURL(stagedCover.previewUrl); stagedCover = null; }
+  if (stagedBg)    { URL.revokeObjectURL(stagedBg.previewUrl);    stagedBg = null; }
   stagedFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl));
   stagedFiles = [];
   existingCover = null;
   existingGallery = [];
   removedMediaIds = [];
   renderCoverPreview();
+  renderBgPreview();
   renderPreviews();
 
   // Load existing media from Firestore subcollection
@@ -665,11 +695,50 @@ function stageCover(file) {
   renderCoverPreview();
 }
 
+function stageBg(file) {
+  if (stagedBg) URL.revokeObjectURL(stagedBg.previewUrl);
+  stagedBg = { file, previewUrl: URL.createObjectURL(file) };
+  renderBgPreview();
+}
+
 function stageFiles(fileList) {
   for (const file of fileList) {
     stagedFiles.push({ file, type: classifyFile(file), previewUrl: URL.createObjectURL(file) });
   }
   renderPreviews();
+}
+
+function renderBgPreview() {
+  const wrap = document.getElementById("bgPreview");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+
+  if (stagedBg) {
+    const img = Object.assign(document.createElement("img"), {
+      src: stagedBg.previewUrl, alt: "Background preview", className: "cover-thumb",
+    });
+    const remove = Object.assign(document.createElement("button"), {
+      className: "cover-remove", type: "button", textContent: "✕ Remove",
+    });
+    remove.addEventListener("click", () => {
+      URL.revokeObjectURL(stagedBg.previewUrl);
+      stagedBg = null;
+      renderBgPreview();
+    });
+    wrap.append(img, remove);
+  } else if (existingBgUrl) {
+    const img = Object.assign(document.createElement("img"), {
+      src: existingBgUrl, alt: "Background image", className: "cover-thumb",
+    });
+    const remove = Object.assign(document.createElement("button"), {
+      className: "cover-remove", type: "button", textContent: "✕ Remove",
+    });
+    remove.addEventListener("click", () => {
+      existingBgUrl = null;
+      renderBgPreview();
+    });
+    wrap.append(img, remove);
+  }
 }
 
 function renderCoverPreview() {
@@ -940,6 +1009,28 @@ export function initAdminPortal() {
     dropzoneCover.addEventListener("drop", (e) => {
       const file = e.dataTransfer?.files?.[0];
       if (file && file.type.startsWith("image/")) stageCover(file);
+    });
+  }
+
+  // Background image dropzone
+  const dropzoneBg  = document.getElementById("dropzoneBg");
+  const fileInputBg = document.getElementById("fileInputBg");
+  if (dropzoneBg && fileInputBg) {
+    fileInputBg.addEventListener("click", (e) => e.stopPropagation());
+    dropzoneBg.addEventListener("click", () => fileInputBg.click());
+    fileInputBg.addEventListener("change", (e) => {
+      if (e.target.files[0]) stageBg(e.target.files[0]);
+      fileInputBg.value = "";
+    });
+    ["dragenter", "dragover"].forEach((ev) =>
+      dropzoneBg.addEventListener(ev, (e) => { e.preventDefault(); dropzoneBg.classList.add("dragover"); })
+    );
+    ["dragleave", "drop"].forEach((ev) =>
+      dropzoneBg.addEventListener(ev, (e) => { e.preventDefault(); dropzoneBg.classList.remove("dragover"); })
+    );
+    dropzoneBg.addEventListener("drop", (e) => {
+      const file = e.dataTransfer?.files?.[0];
+      if (file && file.type.startsWith("image/")) stageBg(file);
     });
   }
 

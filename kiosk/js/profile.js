@@ -380,6 +380,12 @@ export async function initProfileScreen() {
       return;
     }
 
+    // Per-person background overrides the tenant background
+    if (person.background_url) {
+      document.body.style.setProperty('--tenant-bg-url', `url("${person.background_url}")`);
+      document.body.classList.add('has-tenant-bg');
+    }
+
     if (person.presentation_url) {
       // Premade presentation: skip the built-in layout, embed the URL.
       renderEmbed(person);

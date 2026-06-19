@@ -153,7 +153,6 @@
         personMediaCollection,
       } from "./js/firebase.js";
       import { applyTenantBackground } from "./js/tenant-bg.js";
-      applyTenantBackground();
 
       // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -213,6 +212,19 @@
       const AUTO_MS     = 5000;
       const FADE_OUT_MS = 400;
       const FADE_IN_MS  = 900;
+      let tenantBgUrl   = null; // saved after applyTenantBackground resolves
+
+      function applyPersonBg(person) {
+        if (person.background_url) {
+          document.body.style.setProperty('--tenant-bg-url', `url("${person.background_url}")`);
+          document.body.classList.add('has-tenant-bg');
+        } else if (tenantBgUrl) {
+          document.body.style.setProperty('--tenant-bg-url', tenantBgUrl);
+          document.body.classList.add('has-tenant-bg');
+        } else {
+          document.body.classList.remove('has-tenant-bg');
+        }
+      }
 
       const lang = sessionStorage.getItem('kiosk_lang') || 'ja';
       const ja   = lang !== 'en';
@@ -238,6 +250,7 @@
       // ── Render ───────────────────────────────────────────────────────────
 
       function renderSlide(person, media) {
+        applyPersonBg(person);
         const photos = media.filter(m => m.file_type === 'photo' && m.storage_url);
 
         // Name
@@ -410,6 +423,9 @@
       } else {
         (async () => {
           try {
+            await applyTenantBackground();
+            tenantBgUrl = document.body.style.getPropertyValue('--tenant-bg-url') || null;
+
             const root = await getPersonById(personId);
             if (!root) {
               showError(ja ? '記録が見つかりませんでした。' : 'Memorial not found.');
