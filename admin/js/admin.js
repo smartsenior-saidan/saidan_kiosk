@@ -305,8 +305,7 @@ function wireProfileActions(container, localProfiles) {
 
 function showQrModal(person) {
   const tenantId = TENANT_ID || '';
-  const base = window.location.origin;
-  const url  = `${base}/kiosk/family.html?person=${encodeURIComponent(person.id)}&site=${encodeURIComponent(tenantId)}`;
+  const url = `https://kiosk.saidans.org/family.html?person=${encodeURIComponent(person.id)}&site=${encodeURIComponent(tenantId)}`;
   const familyLabel = person.last_name ? `${person.last_name}家` : (person.first_name || 'Family');
 
   document.getElementById('qrFamilyLabel').textContent = familyLabel;
