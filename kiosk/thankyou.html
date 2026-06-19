@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja" class="kiosk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>ありがとうございました — SmartSenior</title>
+    <link rel="manifest" href="manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SmartSenior" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="theme-color" content="#0071e3" />
+    <link rel="stylesheet" href="css/style.css?v=3" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" />
+    <link rel="stylesheet" href="css/kiosk.css?v=18" />
+    <script src="js/config.js"></script>
+    <style>
+      .ty-page {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(28px, 5vh, 56px);
+        background: #faf9f6;
+        text-align: center;
+        padding: clamp(32px, 6vw, 80px);
+      }
+
+      .ty-main {
+        font-size: clamp(2.8rem, 7vw, 5.5rem);
+        font-weight: 700;
+        color: #1a1816;
+        letter-spacing: 0.12em;
+        line-height: 1.3;
+        animation: ty-fadein 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
+      .ty-sub {
+        font-size: clamp(1.1rem, 2.2vw, 1.8rem);
+        color: #555;
+        letter-spacing: 0.06em;
+        line-height: 1.6;
+        animation: ty-fadein 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+      }
+
+      .ty-divider {
+        width: clamp(60px, 10vw, 120px);
+        height: 2px;
+        background: var(--color-accent);
+        border: none;
+        border-radius: 2px;
+        margin: 0;
+        animation: ty-fadein 0.8s ease 0.2s both;
+      }
+
+      .ty-countdown-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        animation: ty-fadein 0.8s ease 0.6s both;
+      }
+
+      .ty-countdown-ring {
+        width: 80px;
+        height: 80px;
+        position: relative;
+      }
+
+      .ty-ring-svg {
+        width: 80px;
+        height: 80px;
+        transform: rotate(-90deg);
+      }
+
+      .ty-ring-track {
+        fill: none;
+        stroke: rgba(0,0,0,0.08);
+        stroke-width: 5;
+      }
+
+      .ty-ring-fill {
+        fill: none;
+        stroke: var(--color-accent);
+        stroke-width: 5;
+        stroke-linecap: round;
+        stroke-dasharray: 220;
+        stroke-dashoffset: 0;
+        transition: stroke-dashoffset 1s linear;
+      }
+
+      .ty-countdown-num {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--color-accent);
+      }
+
+      .ty-countdown-label {
+        font-size: clamp(0.9rem, 1.4vw, 1.1rem);
+        color: #888;
+        letter-spacing: 0.04em;
+      }
+
+      @keyframes ty-fadein {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="ty-page" id="tyPage">
+      <p class="ty-main" id="tyMain">ありがとうございました</p>
+      <hr class="ty-divider" />
+      <p class="ty-sub"  id="tySub">またのご来館をお待ちしております。</p>
+
+      <div class="ty-countdown-wrap">
+        <div class="ty-countdown-ring">
+          <svg class="ty-ring-svg" viewBox="0 0 80 80">
+            <circle class="ty-ring-track" cx="40" cy="40" r="35" />
+            <circle class="ty-ring-fill"  cx="40" cy="40" r="35" id="ringFill" />
+          </svg>
+          <div class="ty-countdown-num" id="tyNum">10</div>
+        </div>
+        <p class="ty-countdown-label" id="tyLabel">秒後にホームへ戻ります</p>
+      </div>
+    </div>
+
+    <script type="module">
+      import { applyTenantBackground } from "./js/tenant-bg.js";
+      applyTenantBackground();
+
+      const lang = sessionStorage.getItem('kiosk_lang') || 'ja';
+      const ja   = lang !== 'en';
+
+      document.documentElement.lang = lang;
+
+      if (!ja) {
+        document.getElementById('tyMain').textContent  = 'Thank You for Your Visit';
+        document.getElementById('tySub').textContent   = 'We look forward to welcoming you again.';
+        document.getElementById('tyLabel').textContent = 'seconds until returning home';
+        document.title = 'Thank You — SmartSenior';
+      }
+
+      // Countdown
+      const TOTAL   = 10;
+      const CIRCUM  = 2 * Math.PI * 35; // circumference of r=35
+      const ringFill = document.getElementById('ringFill');
+      const numEl    = document.getElementById('tyNum');
+
+      ringFill.style.strokeDasharray  = String(CIRCUM);
+      ringFill.style.strokeDashoffset = '0';
+
+      let remaining = TOTAL;
+
+      function tick() {
+        remaining--;
+        numEl.textContent = remaining;
+        const progress = remaining / TOTAL;
+        ringFill.style.strokeDashoffset = String(CIRCUM * (1 - progress));
+        if (remaining <= 0) {
+          const tenantId = window.__ENV__?.TENANT_ID;
+          window.location.href = tenantId
+            ? `index.html?site=${tenantId}`
+            : 'index.html';
+        }
+      }
+
+      // Start after a short delay to let the page fade in
+      setTimeout(() => {
+        setInterval(tick, 1000);
+      }, 800);
+    </script>
+  </body>
+</html>

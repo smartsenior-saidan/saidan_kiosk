@@ -1,12 +1,14 @@
 // SmartSenior Kiosk — Service Worker
 // Caches the app shell so the kiosk loads instantly and survives brief network drops.
 
-const CACHE = 'smartsenior-v2';
+const CACHE = 'smartsenior-v3';
 
 const APP_SHELL = [
   './index.html',
   './profile.html',
   './family.html',
+  './slideshow.html',
+  './thankyou.html',
   './css/style.css',
   './css/kiosk.css',
   './js/config.js',

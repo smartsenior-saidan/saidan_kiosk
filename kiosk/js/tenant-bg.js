@@ -1,6 +1,6 @@
 // tenant-bg.js — applies per-tenant visual theme from Firestore + Storage.
 //
-// Reads tenants/{tenantId} for: accent_color, bgm_path
+// Reads tenants/{tenantId} for: accent_color
 // Reads Storage for: {tenantId}/background.{ext}  (conventional path)
 //
 // Call applyTenantBackground() on every kiosk page.
@@ -34,6 +34,17 @@ function darken(hex, amount = 20) {
   return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
+// ── Font ──────────────────────────────────────────────────────────────────────
+
+function applyFont(family) {
+  if (!family) return;
+  const link = document.createElement("link");
+  link.rel  = "stylesheet";
+  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@400;500;600;700&display=swap`;
+  document.head.appendChild(link);
+  document.documentElement.style.setProperty("--font-primary", `"${family}", serif`);
+}
+
 // ── Accent color ─────────────────────────────────────────────────────────────
 
 function applyAccentColor(hex) {
@@ -41,37 +52,6 @@ function applyAccentColor(hex) {
   const root = document.documentElement;
   root.style.setProperty("--color-accent", hex);
   root.style.setProperty("--color-accent-dark", darken(hex, 20));
-}
-
-// ── BGM ───────────────────────────────────────────────────────────────────────
-
-function setupBgm(url) {
-  const audio = document.createElement("audio");
-  audio.src    = url;
-  audio.loop   = true;
-  audio.volume = 0.35;
-
-  // Browsers block autoplay without a prior user gesture — try immediately,
-  // then retry on the first touch/click if it fails.
-  const tryPlay = () => audio.play().catch(() => {});
-  tryPlay();
-  const onInteraction = () => {
-    tryPlay();
-    document.removeEventListener("click",      onInteraction);
-    document.removeEventListener("touchstart", onInteraction);
-  };
-  document.addEventListener("click",      onInteraction, { once: true });
-  document.addEventListener("touchstart", onInteraction, { once: true, passive: true });
-}
-
-async function loadBgm(bgmPath) {
-  if (!bgmPath) return;
-  try {
-    const url = await getDownloadURL(storageRef(storage, bgmPath));
-    setupBgm(url);
-  } catch (err) {
-    console.warn("[tenant-bg] BGM load failed:", err);
-  }
 }
 
 // ── Main export ──────────────────────────────────────────────────────────────
@@ -91,11 +71,8 @@ export async function applyTenantBackground() {
       findBackgroundURL(tenantId),
     ]);
 
-    // Apply accent color
     if (config.accent_color) applyAccentColor(config.accent_color);
-
-    // Start BGM (fire-and-forget — never blocks page reveal)
-    if (config.bgm_path) loadBgm(config.bgm_path);
+    if (config.font_family)  applyFont(config.font_family);
 
     // Pre-load background image before revealing page
     if (bgUrl) {
@@ -109,10 +86,8 @@ export async function applyTenantBackground() {
       document.body.classList.add("has-tenant-bg");
     }
 
-    return config;
   } catch (err) {
     console.warn("[tenant-bg] theme apply failed:", err);
-    return {};
   } finally {
     clearTimeout(timeout);
     document.body.classList.remove("bg-loading");

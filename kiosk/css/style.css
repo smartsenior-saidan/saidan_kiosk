@@ -30,6 +30,9 @@
   --font-serif: -apple-system, BlinkMacSystemFont,
     "Hiragino Mincho ProN", "Yu Mincho",
     "Noto Serif JP", Georgia, serif;
+
+  /* Per-tenant font — overridden at runtime by tenant-bg.js */
+  --font-primary: 'Shippori Mincho', 'Yu Mincho', '游明朝', serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; }

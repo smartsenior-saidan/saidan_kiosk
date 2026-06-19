@@ -172,9 +172,11 @@ function wireNav(ja) {
       const via = new URLSearchParams(window.location.search).get('via');
       const personId = new URLSearchParams(window.location.search).get('person');
       if (via === 'family' && personId) {
-        // Go back to the family selector for this person
         const rootId = sessionStorage.getItem('kiosk_person') || personId;
         window.location.href = `family.html?person=${rootId}&site=${window.__ENV__.TENANT_ID}`;
+      } else if (via === 'slideshow' && personId) {
+        const rootId = sessionStorage.getItem('kiosk_person') || personId;
+        window.location.href = `slideshow.html?person=${rootId}&site=${window.__ENV__.TENANT_ID}`;
       } else {
         window.location.href = `index.html?restore=search&site=${window.__ENV__.TENANT_ID}`;
       }
@@ -183,7 +185,7 @@ function wireNav(ja) {
   const endBtn = document.getElementById('pnavEnd');
   if (endBtn) {
     endBtn.textContent = ja ? '参拝終了' : 'End Visit';
-    endBtn.addEventListener('click', () => { window.location.href = `index.html?site=${window.__ENV__.TENANT_ID}`; });
+    endBtn.addEventListener('click', () => { window.location.href = `thankyou.html?site=${window.__ENV__.TENANT_ID}`; });
   }
 }
 

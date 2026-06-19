@@ -122,13 +122,6 @@ body.bg-loading {
   gap: clamp(10px, 1.8vh, 20px);
 }
 
-.home-tenant-name {
-  font-size: clamp(1rem, 2vw, 1.4rem);
-  font-weight: 500;
-  color: var(--color-accent);
-  letter-spacing: 0.08em;
-  margin: 0;
-}
 
 .home-greeting-main {
   font-size: clamp(1.7rem, 4.2vw, 2.8rem);
@@ -202,10 +195,10 @@ body.has-tenant-bg::before {
 /* No overlay — background is light, content uses dark text */
 body.has-tenant-bg::after { content: none; }
 
-/* Tenant font: しっぽり明朝 */
-body.has-tenant-bg,
-body.has-tenant-bg * {
-  font-family: 'Shippori Mincho', 'Yu Mincho', '游明朝', serif !important;
+/* Per-tenant font — applied to all kiosk pages */
+html.kiosk body,
+html.kiosk body * {
+  font-family: var(--font-primary) !important;
 }
 
 /* Lift all screens + family page content above background */
@@ -236,9 +229,6 @@ body.has-tenant-bg .screen-home {
 }
 body.has-tenant-bg .home-greeting-main {
   color: #1a1a1a;
-}
-body.has-tenant-bg .home-tenant-name {
-  color: var(--color-accent);
 }
 body.has-tenant-bg .home-greeting-sub,
 body.has-tenant-bg .home-start-hint,
@@ -687,6 +677,27 @@ body.has-tenant-bg .f-member-years {
 .m-btn-back { bottom: 32px; left: 32px; top: auto; display: flex; align-items: center; gap: 6px; }
 .m-btn-end  { top: 24px; right: 32px; }
 
+/* Slideshow button — inline, centered below the family member list */
+.f-slideshow-btn {
+  margin-top: clamp(18px, 3vh, 32px);
+  height: 60px;
+  padding: 0 40px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-accent);
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.15);
+  cursor: pointer;
+  transition: filter 0.12s ease, transform 0.1s ease;
+  align-self: center;
+}
+.f-slideshow-btn:active {
+  filter: brightness(0.88);
+  transform: translateY(1px);
+}
+
 .m-btn-back:hover,
 .m-btn-end:hover { background: rgba(0,0,0,0.04); }
 
@@ -789,7 +800,7 @@ body.has-tenant-bg .f-member-years {
 }
 
 .m-name {
-  font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  font-family: var(--font-primary);
   font-size: clamp(3rem, 6vw, 5.2rem);
   font-weight: 600;
   color: #1a1816;
@@ -807,7 +818,7 @@ body.has-tenant-bg .f-member-years {
 }
 
 .m-kaimyo {
-  font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  font-family: var(--font-primary);
   font-size: clamp(1.4rem, 2.4vw, 2rem);
   color: var(--color-text-muted);
   letter-spacing: 0.1em;
@@ -823,7 +834,7 @@ body.has-tenant-bg .f-member-years {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  font-family: var(--font-primary);
   color: var(--color-text);
   transition: background 0.3s ease;
   border-radius: 10px;
@@ -918,7 +929,7 @@ body.has-tenant-bg .f-member-years {
 }
 
 .p-initials {
-  font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-family: var(--font-primary);
   font-size: 6rem;
   font-weight: 700;
   color: rgba(0, 0, 0, 0.12);
@@ -1054,7 +1065,7 @@ body.has-tenant-bg .f-member-years {
 }
 
 .m-bio-title {
-  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  font-family: var(--font-primary);
   font-size: 1.5rem;
   color: var(--color-text);
   margin: 0 0 18px;
@@ -1062,7 +1073,7 @@ body.has-tenant-bg .f-member-years {
 }
 
 .m-bio-text {
-  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  font-family: var(--font-primary);
   font-size: 1.2rem;
   line-height: 2;
   color: var(--color-text);

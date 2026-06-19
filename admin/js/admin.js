@@ -258,7 +258,8 @@ function profileRow(p, full = false) {
         <td>${p.plot_row || "—"}</td>
         <td>
           <div class="table-actions">
-            <button class="btn-secondary" data-action="edit" data-id="${p.id}">${t("btn.edit")}</button>
+            <button class="btn-secondary" data-action="qr"     data-id="${p.id}" data-name="${(p.last_name || p.first_name || '').replace(/"/g,'&quot;')}" title="QR Code">QR</button>
+            <button class="btn-secondary" data-action="edit"   data-id="${p.id}">${t("btn.edit")}</button>
             <button class="btn-danger"    data-action="delete" data-id="${p.id}">${t("btn.delete")}</button>
           </div>
         </td>
@@ -293,10 +294,60 @@ function wireProfileActions(container, localProfiles) {
       const id = btn.dataset.id;
       const person = pool.find((p) => p.id === id);
 
-      if (action === "edit" && person) { loadForEdit(person); showSection("new-profile"); }
+      if (action === "qr"     && person) showQrModal(person);
+      if (action === "edit"   && person) { loadForEdit(person); showSection("new-profile"); }
       if (action === "delete" && person) await deleteProfile(person);
     });
   });
+}
+
+// ── QR Code modal ────────────────────────────────────────────────────────────
+
+function showQrModal(person) {
+  const tenantId = TENANT_ID || '';
+  const base = window.location.origin;
+  const url  = `${base}/kiosk/family.html?person=${encodeURIComponent(person.id)}&site=${encodeURIComponent(tenantId)}`;
+  const familyLabel = person.last_name ? `${person.last_name}家` : (person.first_name || 'Family');
+
+  document.getElementById('qrFamilyLabel').textContent = familyLabel;
+  document.getElementById('qrUrl').textContent = url;
+
+  const modal = document.getElementById('qrModal');
+  modal.style.display = 'flex';
+
+  const canvas = document.getElementById('qrCanvas');
+  const QR = window.QRCode;
+  if (!QR) {
+    canvas.getContext('2d').fillText('QR library not loaded', 10, 120);
+    console.error('[QR] window.QRCode not available — check CDN script loaded');
+    return;
+  }
+  QR.toCanvas(canvas, url, { width: 240, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } })
+    .catch(err => console.error('[QR] toCanvas error:', err));
+
+  document.getElementById('qrModalClose').onclick = () => { modal.style.display = 'none'; };
+  modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+
+  document.getElementById('qrPrintBtn').onclick = () => {
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><title>${familyLabel} QR</title>
+      <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;gap:16px}
+      h1{font-size:1.8rem;margin:0}p{color:#888;font-size:0.75rem;word-break:break-all;max-width:280px;text-align:center}</style>
+      </head><body>
+      <h1>${familyLabel}</h1>
+      <img src="${canvas.toDataURL()}" width="240" height="240" />
+      <p>${url}</p>
+      <script>window.onload=()=>{window.print();}<\/script>
+      </body></html>`);
+    win.document.close();
+  };
+
+  document.getElementById('qrDownloadBtn').onclick = () => {
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `${familyLabel}-qr.png`;
+    a.click();
+  };
 }
 
 // ── Profile form ─────────────────────────────────────────────────────────────
