@@ -31,6 +31,7 @@ body.bg-loading {
 
 .kiosk-scroll {
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -385,11 +386,6 @@ body.has-tenant-bg .f-member-years {
     max-height: none;
   }
 
-  .search-results-panel.panel-open {
-    display: flex;
-    flex-direction: column;
-  }
-
   /* Keyboard: full-width, compact, at the bottom */
   .keyboard-area {
     order: 2;
@@ -416,6 +412,7 @@ body.has-tenant-bg .f-member-years {
   width: clamp(280px, 34vw, 480px);
   padding: 8px 0 12px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   -ms-overflow-style: none;
   scrollbar-width: none;
   align-self: stretch;
