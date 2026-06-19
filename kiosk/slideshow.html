@@ -445,6 +445,27 @@
           }
         })();
       }
+
+      // ── QR / barcode scanner (HID keyboard emulator) ──────────────────
+      (function () {
+        let buf = '';
+        let timer = null;
+        const TIMEOUT = 150;
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            clearTimeout(timer);
+            const scanned = buf.trim();
+            buf = '';
+            if (scanned.includes('family.html') && scanned.includes('person=')) {
+              try { window.location.href = new URL(scanned).href; } catch (_) {}
+            }
+          } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            buf += e.key;
+            clearTimeout(timer);
+            timer = setTimeout(() => { buf = ''; }, TIMEOUT);
+          }
+        });
+      })();
     </script>
   </body>
 </html>

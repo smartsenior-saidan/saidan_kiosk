@@ -345,10 +345,8 @@
         requestAnimationFrame(() => { openKeyboard(); measureLayout(); });
       }
       function showHome() {
-        closeKeyboard();
-        searchScreen.classList.add('hidden');
-        homeScreen.classList.remove('hidden');
-        clearInput();
+        const site = window.__ENV__?.TENANT_ID || '';
+        window.location.href = site ? `index.html?site=${site}` : 'index.html';
       }
 
       document.getElementById('startBtn').addEventListener('click', showSearch);
@@ -387,6 +385,34 @@
           }
         }
       }
+
+      // ── QR / barcode scanner (HID keyboard emulator) ──────────────────
+      // Physical scanners like the QK30 act as keyboards: they type the URL
+      // rapidly then send Enter. We buffer fast keystrokes and navigate on Enter.
+      (function () {
+        let buf = '';
+        let timer = null;
+        const TIMEOUT = 150; // ms — scanners finish in < 50ms; humans take 300ms+
+
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            clearTimeout(timer);
+            const scanned = buf.trim();
+            buf = '';
+            if (scanned.includes('family.html') && scanned.includes('person=')) {
+              // Validate it at least looks like a URL before navigating
+              try {
+                const url = new URL(scanned);
+                window.location.href = url.href;
+              } catch (_) {}
+            }
+          } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            buf += e.key;
+            clearTimeout(timer);
+            timer = setTimeout(() => { buf = ''; }, TIMEOUT);
+          }
+        });
+      })();
     </script>
   </body>
 </html>
