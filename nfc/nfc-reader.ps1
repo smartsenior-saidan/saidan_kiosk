@@ -35,13 +35,18 @@ function Get-HomeUrl {
 function Invoke-EdgeNavigate {
     param($url)
     try {
-        $targets = Invoke-RestMethod -Uri "http://localhost:$EdgeDebugPort/json" -TimeoutSec 2 -ErrorAction Stop
+        # Use 127.0.0.1 (not "localhost") so we don't hit the IPv6 ::1 address,
+        # which Edge's debug server does not listen on.
+        $targets = Invoke-RestMethod -Uri "http://127.0.0.1:$EdgeDebugPort/json" -TimeoutSec 2 -ErrorAction Stop
         $page = $targets | Where-Object { $_.type -eq 'page' -and $_.webSocketDebuggerUrl } | Select-Object -First 1
-        if (-not $page) { return $false }
+        if (-not $page) { Write-Log "Edge reachable but no page target found"; return $false }
+
+        # The websocket URL Edge returns says "localhost" — force it to 127.0.0.1 too.
+        $wsUrl = $page.webSocketDebuggerUrl -replace '://localhost:', '://127.0.0.1:'
 
         $ws = New-Object System.Net.WebSockets.ClientWebSocket
         $ct = [System.Threading.CancellationToken]::None
-        $ws.ConnectAsync([Uri]$page.webSocketDebuggerUrl, $ct).GetAwaiter().GetResult()
+        $ws.ConnectAsync([Uri]$wsUrl, $ct).GetAwaiter().GetResult()
 
         $msg   = @{ id = 1; method = "Page.navigate"; params = @{ url = $url } } | ConvertTo-Json -Compress
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($msg)
@@ -53,6 +58,7 @@ function Invoke-EdgeNavigate {
         $ws.Dispose()
         return $true
     } catch {
+        Write-Log "Edge navigate failed: $($_.Exception.Message)"
         return $false
     }
 }
