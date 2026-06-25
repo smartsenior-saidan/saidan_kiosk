@@ -1,12 +1,39 @@
 const { NFC } = require('nfc-pcsc');
 const { exec } = require('child_process');
+const fs = require('fs');
 const nfc = new NFC();
+
+const REDIRECT_DELAY_MS = 5000; // 5 seconds after card removed
+const CONFIG_PATH = 'C:\\ProgramData\\SmartSenior\\config.json';
+const FALLBACK_HOME = 'https://kiosk.saidans.org';
+
+function getHomeUrl() {
+    try {
+        const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+        return config.homeUrl || FALLBACK_HOME;
+    } catch {
+        return FALLBACK_HOME;
+    }
+}
+
+let redirectTimer = null;
+
+function openUrl(url) {
+    const opener = process.platform === 'win32' ? `start "" "${url}"` : `open "${url}"`;
+    exec(opener);
+}
 
 nfc.on('reader', reader => {
     console.log('Reader ready:', reader.name);
     console.log('Tap your card to read...');
 
     reader.on('card', async card => {
+        if (redirectTimer) {
+            clearTimeout(redirectTimer);
+            redirectTimer = null;
+            console.log('New card tapped - redirect cancelled');
+        }
+
         console.log('Card UID:', card.uid);
 
         try {
@@ -22,9 +49,8 @@ nfc.on('reader', reader => {
                     const prefix = prefixes[prefixCode] || '';
                     const urlPart = ndefRecord.slice(5).toString('utf8');
                     const fullUrl = prefix + urlPart;
-                    console.log('URL:', fullUrl);
-                    const opener = process.platform === 'win32' ? 'start ""' : 'open';
-                    exec(`${opener} "${fullUrl}"`);
+                    console.log('Opening URL:', fullUrl);
+                    openUrl(fullUrl);
                 }
             } else {
                 console.log('No NDEF data found on card');
@@ -32,6 +58,16 @@ nfc.on('reader', reader => {
         } catch (err) {
             console.error('Read failed:', err);
         }
+    });
+
+    reader.on('card.off', () => {
+        const homeUrl = getHomeUrl();
+        console.log(`Card removed - redirecting to ${homeUrl} in ${REDIRECT_DELAY_MS / 1000} seconds...`);
+        redirectTimer = setTimeout(() => {
+            console.log('Redirecting to home page...');
+            openUrl(homeUrl);
+            redirectTimer = null;
+        }, REDIRECT_DELAY_MS);
     });
 });
 
