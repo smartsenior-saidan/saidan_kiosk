@@ -3,31 +3,25 @@
 
 $ErrorActionPreference = "Stop"
 $installPath = "C:\KioskProgram"
-$logFile = "C:\KioskProgram\nfc-setup.log"
+$logFile = "C:\KioskProgram-setup.log"
 $repoUrl = "https://github.com/smartsenior-saidan/kioskprogram.git"
 $nodeVersion = "v20.11.0"
 $nodeInstaller = "$env:TEMP\node-installer.msi"
 $nodePath = "C:\Program Files\nodejs\node.exe"
 $npmPath = "C:\Program Files\nodejs\npm.cmd"
+$gitPath = "C:\Program Files\Git\cmd\git.exe"
 
 function Write-Log {
     param($message)
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $line = "$timestamp - $message"
     Write-Output $line
-    if (Test-Path (Split-Path $logFile)) {
-        $line | Out-File -FilePath $logFile -Append -Encoding UTF8
-    }
-}
-
-# 1. Create install folder
-if (-not (Test-Path $installPath)) {
-    New-Item -ItemType Directory -Path $installPath -Force | Out-Null
+    $line | Out-File -FilePath $logFile -Append -Encoding UTF8
 }
 
 Write-Log "Starting NFC Reader setup..."
 
-# 2. Install Node.js silently if not installed
+# 1. Install Node.js silently if not installed
 if (-not (Test-Path $nodePath)) {
     Write-Log "Downloading Node.js $nodeVersion..."
     Invoke-WebRequest -Uri "https://nodejs.org/dist/$nodeVersion/node-$nodeVersion-x64.msi" -OutFile $nodeInstaller -UseBasicParsing
@@ -38,8 +32,7 @@ if (-not (Test-Path $nodePath)) {
     Write-Log "Node.js already installed"
 }
 
-# 3. Install Git silently if not installed
-$gitPath = "C:\Program Files\Git\cmd\git.exe"
+# 2. Install Git silently if not installed
 if (-not (Test-Path $gitPath)) {
     Write-Log "Downloading Git..."
     $gitInstaller = "$env:TEMP\git-installer.exe"
@@ -51,31 +44,42 @@ if (-not (Test-Path $gitPath)) {
     Write-Log "Git already installed"
 }
 
-# 4. Clone or update the repo
-if (-not (Test-Path "$installPath\.git")) {
-    Write-Log "Cloning repository..."
-    & "C:\Program Files\Git\cmd\git.exe" clone $repoUrl $installPath
-} else {
+# 3. Clone or update repo — remove folder first if it exists but isn't a git repo
+if (Test-Path "$installPath\.git") {
     Write-Log "Updating repository..."
-    & "C:\Program Files\Git\cmd\git.exe" -C $installPath pull
+    & $gitPath -C $installPath pull
+} else {
+    if (Test-Path $installPath) {
+        Write-Log "Removing existing folder before clone..."
+        Remove-Item -Path $installPath -Recurse -Force
+    }
+    Write-Log "Cloning repository..."
+    & $gitPath clone $repoUrl $installPath
 }
 
-# 5. Install npm packages
+# 4. Install npm packages
 Write-Log "Installing npm packages..."
-& $npmPath install --prefix $installPath
+Push-Location $installPath
+& $npmPath install
+Pop-Location
 
-# 6. Create a VBScript to launch node silently (no terminal window)
+# 5. Ensure nfc folder exists then create VBScript to run node silently
+$nfcDir = "$installPath\nfc"
+if (-not (Test-Path $nfcDir)) {
+    New-Item -ItemType Directory -Path $nfcDir -Force | Out-Null
+}
+
 $vbsContent = @"
 Set WshShell = CreateObject("WScript.Shell")
 WshShell.Run """C:\Program Files\nodejs\node.exe"" C:\KioskProgram\nfc\read.js", 0, False
 "@
-$vbsContent | Out-File -FilePath "$installPath\nfc\start-nfc.vbs" -Encoding ASCII
+$vbsContent | Out-File -FilePath "$nfcDir\start-nfc.vbs" -Encoding ASCII
 Write-Log "Created start-nfc.vbs"
 
-# 7. Register Scheduled Task to run NFC reader at every user login
+# 6. Register Scheduled Task to run NFC reader at every user login
 $taskAction = New-ScheduledTaskAction `
     -Execute "wscript.exe" `
-    -Argument "`"$installPath\nfc\start-nfc.vbs`""
+    -Argument "`"$nfcDir\start-nfc.vbs`""
 
 $taskTrigger = New-ScheduledTaskTrigger -AtLogOn
 
@@ -94,5 +98,5 @@ Register-ScheduledTask `
     -RunLevel Highest `
     -Force
 
-Write-Log "Scheduled task registered - NFC reader will start on every login"
+Write-Log "Scheduled task registered"
 Write-Log "Setup complete!"
