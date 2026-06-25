@@ -13,6 +13,7 @@ $RedirectDelaySeconds = 5
 $ConfigPath           = "C:\ProgramData\SmartSenior\config.json"
 $FallbackHome         = "https://kiosk.saidans.org"
 $LogPath              = "C:\KioskProgram\nfc\reader.log"
+$EdgeDebugPort        = 9222   # Edge must be launched with --remote-debugging-port=9222
 
 function Write-Log {
     param($message)
@@ -29,8 +30,41 @@ function Get-HomeUrl {
     return $FallbackHome
 }
 
+# Navigate the already-open Edge window via the DevTools protocol.
+# Returns $true if it managed to navigate the existing window.
+function Invoke-EdgeNavigate {
+    param($url)
+    try {
+        $targets = Invoke-RestMethod -Uri "http://localhost:$EdgeDebugPort/json" -TimeoutSec 2 -ErrorAction Stop
+        $page = $targets | Where-Object { $_.type -eq 'page' -and $_.webSocketDebuggerUrl } | Select-Object -First 1
+        if (-not $page) { return $false }
+
+        $ws = New-Object System.Net.WebSockets.ClientWebSocket
+        $ct = [System.Threading.CancellationToken]::None
+        $ws.ConnectAsync([Uri]$page.webSocketDebuggerUrl, $ct).GetAwaiter().GetResult()
+
+        $msg   = @{ id = 1; method = "Page.navigate"; params = @{ url = $url } } | ConvertTo-Json -Compress
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($msg)
+        $seg   = New-Object 'System.ArraySegment[byte]' -ArgumentList (,$bytes)
+        $ws.SendAsync($seg, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $ct).GetAwaiter().GetResult()
+
+        Start-Sleep -Milliseconds 150
+        $ws.CloseAsync([System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure, "", $ct).GetAwaiter().GetResult()
+        $ws.Dispose()
+        return $true
+    } catch {
+        return $false
+    }
+}
+
 function Open-Url {
     param($url)
+    if (Invoke-EdgeNavigate $url) {
+        Write-Log "Navigated Edge -> $url"
+        return
+    }
+    # Fallback: Edge debug port not reachable -> open in a new window.
+    Write-Log "Edge debug port unavailable; opening new window -> $url"
     try { Start-Process $url } catch { Write-Log "Failed to open $url : $_" }
 }
 
