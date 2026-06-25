@@ -1,0 +1,25 @@
+{
+  "name": "kioskprogram",
+  "version": "1.0.0",
+  "description": "Links to Each Tenants site",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/smartsenior-saidan/kioskprogram.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/smartsenior-saidan/kioskprogram/issues"
+  },
+  "homepage": "https://github.com/smartsenior-saidan/kioskprogram#readme",
+  "dependencies": {
+    "nfc-pcsc": "^0.8.1",
+    "smartcard": "^3.7.2"
+  }
+}
