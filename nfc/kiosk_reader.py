@@ -15,6 +15,8 @@ from pathlib import Path
 
 import requests
 import websocket
+import serial
+import serial.tools.list_ports
 from smartcard.System import readers
 import ndef
 from pynput import keyboard
@@ -23,11 +25,13 @@ __version__ = "1.0.0"
 
 # ── Settings ─────────────────────────────────────────────────────────────────
 
-DEBUG_PORT   = "9222"
-CONFIG_PATH  = Path(r"C:\ProgramData\SmartSenior\config.json")
-FALLBACK_HOME = "https://kiosk.saidans.org"
-CARD_REMOVE_DELAY = 5   # seconds before home redirect after card removed
-QR_TIMEOUT        = 60  # seconds before home redirect after QR scan
+DEBUG_PORT        = "9222"
+CONFIG_PATH       = Path(r"C:\ProgramData\SmartSenior\config.json")
+FALLBACK_HOME     = "https://kiosk.saidans.org"
+CARD_REMOVE_DELAY = 5    # seconds before home redirect after card removed
+QR_TIMEOUT        = 60   # seconds before home redirect after QR scan
+QR_COM_FALLBACK   = "COM33"  # fallback if auto-detect fails
+QR_BAUD_RATE      = 9600
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -242,37 +246,42 @@ def run_nfc_loop(reader):
             log_err(f"NFC loop error: {e}")
             time.sleep(1)
 
-# ── QR scanner (HID keyboard mode) ───────────────────────────────────────────
+# ── QR scanner (Denso QK30 serial/COM port mode) ─────────────────────────────
 
-qr_buffer         = []
-qr_last_key_time  = 0.0
-qr_timer          = None
+qr_timer = None
 
-def _on_key(key):
-    global qr_buffer, qr_last_key_time, qr_timer
-    now = time.time()
-    if now - qr_last_key_time > 0.5:
-        qr_buffer = []
-    qr_last_key_time = now
-    try:
-        if key == keyboard.Key.enter:
-            scanned = "".join(qr_buffer)
-            qr_buffer = []
-            if scanned.startswith("http://") or scanned.startswith("https://"):
-                log(f"QR scanned: {scanned}")
-                navigate(scanned)
-                if qr_timer:
-                    qr_timer.cancel()
-                home = get_home_url()
-                qr_timer = threading.Timer(
-                    QR_TIMEOUT, lambda h=home: navigate(h)
-                )
-                qr_timer.daemon = True
-                qr_timer.start()
-        elif hasattr(key, "char") and key.char:
-            qr_buffer.append(key.char)
-    except Exception:
-        pass
+def _find_qr_port():
+    for p in serial.tools.list_ports.comports():
+        desc = (p.description or "").lower()
+        mfr  = (p.manufacturer or "").lower()
+        if any(k in desc or k in mfr for k in ("denso", "qk30", "aks")):
+            return p.device
+    return QR_COM_FALLBACK
+
+def run_qr_loop():
+    global qr_timer
+    port = _find_qr_port()
+    log(f"QR scanner: {port}")
+    while True:
+        try:
+            with serial.Serial(port, QR_BAUD_RATE, timeout=1) as ser:
+                log(f"QR serial open on {port}")
+                while True:
+                    line = ser.readline().decode("utf-8", errors="ignore").strip()
+                    if not line:
+                        continue
+                    if line.startswith("http://") or line.startswith("https://"):
+                        log(f"QR scanned: {line}")
+                        navigate(line)
+                        if qr_timer:
+                            qr_timer.cancel()
+                        home = get_home_url()
+                        qr_timer = threading.Timer(QR_TIMEOUT, lambda h=home: navigate(h))
+                        qr_timer.daemon = True
+                        qr_timer.start()
+        except Exception as e:
+            log_err(f"QR serial error: {e}")
+            time.sleep(3)
 
 # ── Exit hotkey Ctrl+Shift+Q ──────────────────────────────────────────────────
 
@@ -292,9 +301,9 @@ def main():
     # Tab guard: close any extra tabs that open
     threading.Thread(target=_tab_guard_loop, daemon=True).start()
 
-    # QR scanner (HID keyboard emulation)
-    keyboard.Listener(on_press=_on_key, daemon=True).start()
-    log("QR listener started")
+    # QR scanner (Denso QK30 serial COM port)
+    threading.Thread(target=run_qr_loop, daemon=True).start()
+    log("QR serial listener started")
 
     # Exit hotkey
     keyboard.GlobalHotKeys({"<ctrl>+<shift>+q": _exit}, daemon=True).start()
