@@ -239,7 +239,10 @@ def _find_qr_port():
     for p in serial.tools.list_ports.comports():
         desc = (p.description or "").lower()
         mfr  = (p.manufacturer or "").lower()
+        hwid = (p.hwid or "").upper()
         if any(k in desc or k in mfr for k in ("denso", "qk30", "aks")):
+            return p.device
+        if "076D" in hwid and "0006" in hwid:
             return p.device
     return QR_COM_FALLBACK
 
@@ -305,24 +308,13 @@ if (-not (Test-Path $pythonExe)) {
 # 5. Install Python packages (all have pre-built Windows wheels, no compiling needed)
 Write-Log "Installing Python packages..."
 $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + $env:PATH
-& $pipExe install --quiet --upgrade requests websocket-client pyscard ndeflib pynput pyserial
+& $pipExe install --quiet --upgrade --disable-pip-version-check requests websocket-client pyscard ndeflib pynput pyserial
 Write-Log "Python packages installed"
 
 # 6. Ensure Smart Card service is running
 Set-Service -Name SCardSvr -StartupType Automatic -ErrorAction SilentlyContinue
 Start-Service -Name SCardSvr -ErrorAction SilentlyContinue
 
-# 6b. Force-bind Denso QK30-U driver to any connected device
-Write-Log "Binding Denso QK30-U driver..."
-$densoInf = Get-ChildItem "C:\Windows\System32\DriverStore\FileRepository" `
-    -Filter "dwusb.inf" -Recurse -ErrorAction SilentlyContinue |
-    Select-Object -First 1 -ExpandProperty FullName
-if ($densoInf) {
-    & pnputil /add-driver $densoInf /install | Out-Null
-    Write-Log "Denso driver bound: $densoInf"
-} else {
-    Write-Log "WARNING: dwusb.inf not found - Denso app may not have run yet"
-}
 
 # 7. Create VBScript launcher (runs Python silently, no terminal window)
 @"
