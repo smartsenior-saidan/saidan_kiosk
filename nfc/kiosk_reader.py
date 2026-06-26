@@ -29,7 +29,6 @@ DEBUG_PORT        = "9222"
 CONFIG_PATH       = Path(r"C:\ProgramData\SmartSenior\config.json")
 FALLBACK_HOME     = "https://kiosk.saidans.org"
 CARD_REMOVE_DELAY = 5    # seconds before home redirect after card removed
-QR_TIMEOUT        = 60   # seconds before home redirect after QR scan
 QR_COM_FALLBACK   = "COM33"  # fallback if auto-detect fails
 QR_BAUD_RATE      = 9600
 
@@ -248,8 +247,6 @@ def run_nfc_loop(reader):
 
 # ── QR scanner (Denso QK30 serial/COM port mode) ─────────────────────────────
 
-qr_timer = None
-
 def _find_qr_port():
     for p in serial.tools.list_ports.comports():
         desc = (p.description or "").lower()
@@ -259,7 +256,6 @@ def _find_qr_port():
     return QR_COM_FALLBACK
 
 def run_qr_loop():
-    global qr_timer
     port = _find_qr_port()
     log(f"QR scanner: {port}")
     while True:
@@ -273,12 +269,6 @@ def run_qr_loop():
                     if line.startswith("http://") or line.startswith("https://"):
                         log(f"QR scanned: {line}")
                         navigate(line)
-                        if qr_timer:
-                            qr_timer.cancel()
-                        home = get_home_url()
-                        qr_timer = threading.Timer(QR_TIMEOUT, lambda h=home: navigate(h))
-                        qr_timer.daemon = True
-                        qr_timer.start()
         except Exception as e:
             log_err(f"QR serial error: {e}")
             time.sleep(3)

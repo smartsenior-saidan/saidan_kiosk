@@ -51,7 +51,6 @@ DEBUG_PORT        = "9222"
 CONFIG_PATH       = Path(r"C:\ProgramData\SmartSenior\config.json")
 FALLBACK_HOME     = "https://kiosk.saidans.org"
 CARD_REMOVE_DELAY = 5
-QR_TIMEOUT        = 60
 QR_COM_FALLBACK   = "COM33"
 QR_BAUD_RATE      = 9600
 
@@ -236,8 +235,6 @@ def run_nfc_loop(reader):
         except Exception as e:
             log_err(f"NFC loop error: {e}"); time.sleep(1)
 
-qr_timer = None
-
 def _find_qr_port():
     for p in serial.tools.list_ports.comports():
         desc = (p.description or "").lower()
@@ -247,7 +244,6 @@ def _find_qr_port():
     return QR_COM_FALLBACK
 
 def run_qr_loop():
-    global qr_timer
     port = _find_qr_port()
     log(f"QR scanner: {port}")
     while True:
@@ -261,10 +257,6 @@ def run_qr_loop():
                     if line.startswith("http://") or line.startswith("https://"):
                         log(f"QR scanned: {line}")
                         navigate(line)
-                        if qr_timer: qr_timer.cancel()
-                        home = get_home_url()
-                        qr_timer = threading.Timer(QR_TIMEOUT, lambda h=home: navigate(h))
-                        qr_timer.daemon = True; qr_timer.start()
         except Exception as e:
             log_err(f"QR serial error: {e}"); time.sleep(3)
 
@@ -319,6 +311,18 @@ Write-Log "Python packages installed"
 # 6. Ensure Smart Card service is running
 Set-Service -Name SCardSvr -StartupType Automatic -ErrorAction SilentlyContinue
 Start-Service -Name SCardSvr -ErrorAction SilentlyContinue
+
+# 6b. Force-bind Denso QK30-U driver to any connected device
+Write-Log "Binding Denso QK30-U driver..."
+$densoInf = Get-ChildItem "C:\Windows\System32\DriverStore\FileRepository" `
+    -Filter "dwusb.inf" -Recurse -ErrorAction SilentlyContinue |
+    Select-Object -First 1 -ExpandProperty FullName
+if ($densoInf) {
+    & pnputil /add-driver $densoInf /install | Out-Null
+    Write-Log "Denso driver bound: $densoInf"
+} else {
+    Write-Log "WARNING: dwusb.inf not found - Denso app may not have run yet"
+}
 
 # 7. Create VBScript launcher (runs Python silently, no terminal window)
 @"
