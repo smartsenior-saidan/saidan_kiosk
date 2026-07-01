@@ -28,7 +28,7 @@ import {
   personMediaCollection,
   personMediaDoc,
 } from "./firebase.js?v=2";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=2";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=3";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -50,7 +50,15 @@ let selectedRelated = [];   // array of { id, first_name, last_name }
 
 // ── Section navigation ───────────────────────────────────────────────────────
 
-function showSection(name) {
+/** Page title for the current section — "Edit — {name}" while editing, else the section label. */
+function currentPageTitle() {
+  if (currentSection === "new-profile" && editingPersonId && editingPerson) {
+    return t("formTitle.edit", { name: `${editingPerson.first_name} ${editingPerson.last_name}` });
+  }
+  return t(`section.${currentSection}`);
+}
+
+function showSection(name, opts = {}) {
   currentSection = name;
   document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
   document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
@@ -58,12 +66,15 @@ function showSection(name) {
   const sec = document.getElementById(`sec-${name}`);
   if (sec) sec.classList.add("active");
 
-  document.querySelectorAll(`[data-section="${name}"]`).forEach((el) =>
+  // While editing, the "new-profile" form is shown but "Profiles" stays highlighted —
+  // editing isn't the same action as starting a brand new profile.
+  const activeNav = opts.activeNav || name;
+  document.querySelectorAll(`[data-section="${activeNav}"]`).forEach((el) =>
     el.classList.add("active")
   );
 
   const titleEl = document.getElementById("pageTitle");
-  if (titleEl) titleEl.textContent = t(`section.${name}`);
+  if (titleEl) titleEl.textContent = currentPageTitle();
 
   // Close mobile sidebar
   document.getElementById("sidebar")?.classList.remove("open");
@@ -71,7 +82,49 @@ function showSection(name) {
   // Lazy-load sections
   if (name === "dashboard") loadDashboard();
   if (name === "profiles") loadProfileList();
+
+  // Give this section its own browser-history entry so Back/Forward moves
+  // between in-app sections instead of leaving the app. Skipped when we're
+  // here *because* of a Back/Forward press (popstate already moved history).
+  if (!opts.skipPush) pushHistory(name, { activeNav, personId: opts.personId || null });
 }
+
+// ── Browser history (Back/Forward moves between sections, not out of the app) ──
+
+let _historyInitialized = false;
+
+function pushHistory(name, { activeNav, personId } = {}) {
+  const state = { section: name, activeNav: activeNav || name, personId: personId || null };
+  if (!_historyInitialized) {
+    // First section shown after load — replace so there's no extra "blank" entry to Back into.
+    history.replaceState(state, "", `#${name}`);
+    _historyInitialized = true;
+  } else {
+    history.pushState(state, "", `#${name}`);
+  }
+}
+
+window.addEventListener("popstate", async (e) => {
+  const state = e.state || { section: "dashboard" };
+
+  if (state.section === "new-profile" && state.personId) {
+    let person = allProfiles.find((p) => p.id === state.personId);
+    if (!person) {
+      try {
+        const snap = await getDoc(doc(db, COLLECTIONS.persons, state.personId));
+        if (snap.exists()) person = { id: snap.id, ...snap.data() };
+      } catch (err) { console.warn("[admin] history restore failed:", err); }
+    }
+    if (person) {
+      await loadForEdit(person);
+      showSection("new-profile", { activeNav: "profiles", personId: person.id, skipPush: true });
+      return;
+    }
+  }
+
+  if (state.section === "new-profile" && !state.personId) resetForm();
+  showSection(state.section || "dashboard", { activeNav: state.activeNav, skipPush: true });
+});
 
 // ── Status helpers ───────────────────────────────────────────────────────────
 
@@ -298,7 +351,7 @@ function wireProfileActions(container, localProfiles) {
       const person = pool.find((p) => p.id === id);
 
       if (action === "qr"     && person) showQrModal(person);
-      if (action === "edit"   && person) { loadForEdit(person); showSection("new-profile"); }
+      if (action === "edit"   && person) { loadForEdit(person); showSection("new-profile", { activeNav: "profiles", personId: person.id }); }
       if (action === "delete" && person) await deleteProfile(person);
     });
   });
@@ -363,6 +416,7 @@ function readForm() {
     first_name: get("firstName"),
     last_name: get("lastName"),
     family_name: get("familyName"),
+    kaimyo: get("kaimyo"),
     birth_date: get("birthDate"),
     death_date: get("deathDate"),
     plot_section: section,
@@ -592,6 +646,7 @@ async function loadForEdit(person) {
   set("firstName",      person.first_name);
   set("lastName",       person.last_name);
   set("familyName",     person.family_name);
+  set("kaimyo",         person.kaimyo || person.posthumous_name);
   set("birthDate",      person.birth_date);
   set("deathDate",      person.death_date);
   set("plotSection",    person.plot_section);
@@ -878,7 +933,7 @@ function syncLangButtons() {
 /** Re-translate everything that JS rendered when the language changes. */
 function retranslateDynamic() {
   syncLangButtons();
-  setText("pageTitle", t(`section.${currentSection}`));
+  setText("pageTitle", currentPageTitle());
   setText("sidebarRole", ROLE === "superadmin" ? t("role.superadmin") : t("role.admin"));
 
   // Form chrome reflects whether we're editing
@@ -912,24 +967,6 @@ export function initAdminPortal() {
     await signOut(auth);
     window.location.href = "login.html";
   });
-
-  // Dark / light mode toggle
-  const DARK_KEY = "admin_dark";
-  const themeToggle = document.getElementById("themeToggle");
-  const themeIcon   = document.getElementById("themeIcon");
-
-  const MOON_SVG = `<path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>`;
-  const SUN_SVG  = `<path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>`;
-
-  function applyTheme(dark) {
-    document.body.classList.toggle("dark", dark);
-    if (themeIcon) themeIcon.innerHTML = dark ? SUN_SVG : MOON_SVG;
-    if (themeToggle) themeToggle.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
-    localStorage.setItem(DARK_KEY, dark ? "1" : "0");
-  }
-
-  applyTheme(localStorage.getItem(DARK_KEY) === "1");
-  themeToggle?.addEventListener("click", () => applyTheme(!document.body.classList.contains("dark")));
 
   // Language: apply saved choice + wire the EN / 日本語 switch
   document.documentElement.lang = getLang();

@@ -74,7 +74,9 @@ form.addEventListener("submit", async (e) => {
     sessionStorage.setItem("ss_role", userData.role || "admin");
     sessionStorage.setItem("ss_display_name", userData.display_name || user.email);
 
-    window.location.href = "index.html";
+    // Replace (not push) so the login page never sits in browser history —
+    // pressing Back from the dashboard shouldn't be able to land back here.
+    window.location.replace("index.html");
   } catch (err) {
     showStatus(friendlyError(err.code));
     signInBtn.disabled = false;

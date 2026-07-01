@@ -67,10 +67,6 @@
               <button type="button" data-lang="en">EN</button>
               <button type="button" data-lang="ja">日本語</button>
             </div>
-            <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle dark/light mode">
-              <!-- icon swapped by JS -->
-              <svg id="themeIcon" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
-            </button>
             <button class="btn" id="newProfileBtn" data-i18n="btn.newProfile">+ New Profile</button>
           </div>
         </header>
@@ -136,6 +132,12 @@
                   <div class="field">
                     <label for="familyName" data-i18n="form.familyName">Family / maiden name</label>
                     <input id="familyName" type="text" placeholder="Helps guests search under an additional surname" data-i18n-ph="ph.familyName" />
+                  </div>
+
+                  <div class="field">
+                    <label for="kaimyo" data-i18n="form.kaimyo">Posthumous name (kaimyo)</label>
+                    <input id="kaimyo" type="text" placeholder="戒名" data-i18n-ph="ph.kaimyo" />
+                    <p class="field-hint" data-i18n="hint.kaimyo">Buddhist posthumous name, shown next to the name on the kiosk profile.</p>
                   </div>
 
                   <div class="form-row">
@@ -264,7 +266,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=4";
+      import { initAdminPortal } from "./js/admin.js?v=6";
       initAdminPortal();
     </script>
   </body>

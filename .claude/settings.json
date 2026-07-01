@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/linusfujisawa/Desktop/Programming/SmartSenior/KioskProgram log --oneline -20)"
+    ]
+  }
+}
