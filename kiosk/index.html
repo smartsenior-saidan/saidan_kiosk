@@ -24,7 +24,7 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap"
     />
-    <link rel="stylesheet" href="css/kiosk.css?v=42" />
+    <link rel="stylesheet" href="css/kiosk.css?v=53" />
     <!-- Pins this kiosk to its memorial site (tenant). Runs before modules. -->
     <script src="js/config.js"></script>
   </head>
@@ -38,12 +38,14 @@
         <p class="home-greeting-sub" data-i18n="greetingSub"></p>
       </div>
 
-      <button
-        class="home-start-btn"
-        id="startBtn"
-        data-i18n="startBtn"
-      ></button>
-      <p class="home-start-hint" data-i18n="startHint"></p>
+      <div class="home-cta">
+        <button
+          class="home-start-btn"
+          id="startBtn"
+          data-i18n="startBtn"
+        ></button>
+        <p class="home-start-hint" data-i18n="startHint"></p>
+      </div>
 
       <p class="home-ic-note" data-i18n="icNote"></p>
     </div>
@@ -84,13 +86,6 @@
           id="searchButton"
           data-i18n="searchBtn"
         ></button>
-
-        <!-- Family vs individual result mode -->
-        <div class="mode-switcher" id="searchModeSwitcher">
-          <div class="mode-slider" id="modeSlider"></div>
-          <button class="mode-btn active" data-mode="family">家族</button>
-          <button class="mode-btn" data-mode="individual">個人</button>
-        </div>
       </div>
 
       <!-- Body: keyboard (left) + results (right) -->
@@ -129,7 +124,7 @@
     </script>
 
     <script type="module">
-      import { initSearchScreen, syncModeSlider } from "./js/search.js";
+      import { initSearchScreen } from "./js/search.js";
       import { applyTenantBackground } from "./js/tenant-bg.js";
 
       // ── Translations ──────────────────────────────────────────────────
@@ -143,7 +138,7 @@
         searchTitle: "名前検索（姓 → 名と入力）",
         searchSub: "姓のみ・名のみ・途中までの入力でも検索できます",
         endVisit: "参拝終了",
-        searchPlaceholder: "こちらに名前が表示されます…",
+        searchPlaceholder: "氏名を入力してください",
         searchBtn: "検索",
         spaceBtn: "スペース",
         clearAllBtn: "全消去",
@@ -394,7 +389,6 @@
         requestAnimationFrame(() => {
           openKeyboard();
           measureLayout();
-          syncModeSlider();
         });
       }
       function showHome() {
@@ -409,7 +403,6 @@
       window.addEventListener("resize", () => {
         if (!searchScreen.classList.contains("hidden")) {
           measureLayout();
-          syncModeSlider();
         }
       });
 

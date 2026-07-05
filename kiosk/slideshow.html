@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" />
-    <link rel="stylesheet" href="css/kiosk.css?v=42" />
+    <link rel="stylesheet" href="css/kiosk.css?v=53" />
     <script src="js/config.js"></script>
     <style>
       /* ── Slideshow nav bar ─────────────────────────────────────────────── */
@@ -112,6 +112,10 @@
         <div class="m-dots hidden" id="pDots"></div>
       </div>
       <div class="m-side m-side-left">
+        <div class="m-info hidden" id="pBirthBlock">
+          <span class="m-info-label" id="pBirthLabel">生誕</span>
+          <span class="m-info-value" id="pBirthDate"></span>
+        </div>
         <div class="m-info hidden" id="pDeathBlock">
           <span class="m-info-label" id="pDeathLabel">没日</span>
           <span class="m-info-value" id="pDeathDate"></span>
@@ -197,7 +201,7 @@
       let autoTimer     = null;
       let autoPlaying   = true;
       let isAnimating   = false;
-      const AUTO_MS     = 10000;
+      const AUTO_MS     = 7000;
       const FADE_OUT_MS = 400;
       const FADE_IN_MS  = 900;
       let tenantBgUrl   = null; // saved after applyTenantBackground resolves
@@ -242,6 +246,13 @@
         const kaimyo = person.kaimyo || person.posthumous_name || '';
         if (kaimyo) { set('pKaimyo', kaimyo); show('pKaimyo'); }
         else hide('pKaimyo');
+
+        // Birth date
+        if (person.birth_date) {
+          set('pBirthLabel', '生誕');
+          set('pBirthDate', toEraDate(person.birth_date));
+          show('pBirthBlock');
+        } else hide('pBirthBlock');
 
         // Death date
         if (person.death_date) {

@@ -12,7 +12,7 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <meta name="theme-color" content="#0071e3" />
     <link rel="stylesheet" href="css/style.css?v=3" />
-    <link rel="stylesheet" href="css/kiosk.css?v=42" />
+    <link rel="stylesheet" href="css/kiosk.css?v=53" />
     <!-- Pins this kiosk to its memorial site (tenant). Runs before modules. -->
     <script src="js/config.js"></script>
   </head>
@@ -57,8 +57,12 @@
         <div class="m-dots hidden" id="pDots"></div>
       </div>
 
-      <!-- Left column: death date + age + plot (vertical for JA) -->
+      <!-- Left column: birth date + death date + age (vertical for JA) -->
       <div class="m-side m-side-left">
+        <div class="m-info hidden" id="pBirthBlock">
+          <span class="m-info-label" id="pBirthLabel">生誕</span>
+          <span class="m-info-value" id="pBirthDate"></span>
+        </div>
         <div class="m-info hidden" id="pDeathBlock">
           <span class="m-info-label" id="pDeathLabel">没日</span>
           <span class="m-info-value" id="pDeathDate"></span>
@@ -75,7 +79,8 @@
     <div class="m-bottom hidden" id="pBottom">
       <button class="m-link hidden" id="pBioToggle">メッセージを読む</button>
       <div class="m-audio-wrap hidden" id="pAudioWrap">
-        <audio id="pAudio" controls preload="metadata"></audio>
+        <audio id="pAudio" preload="metadata"></audio>
+        <button class="m-audio-btn" id="pAudioBtn" aria-label="音声を再生"></button>
       </div>
       <div class="m-video-wrap hidden" id="pVideoWrap">
         <video class="m-video" id="pVideo" controls playsinline preload="metadata"></video>

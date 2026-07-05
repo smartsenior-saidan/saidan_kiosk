@@ -11,11 +11,6 @@ import {
   COLLECTIONS,
 } from "./firebase.js";
 
-// --- Result mode: family (browse the whole family) vs individual (go straight
-// to that person's own profile) -----------------------------------------------
-
-let searchMode = sessionStorage.getItem('kiosk_search_mode') || 'family';
-
 // --- Fuzzy matching utilities ----------------------------------------------
 
 /** Detect whether the string contains Japanese characters. */
@@ -108,6 +103,18 @@ function scorePerson(person, qTokens, qFull) {
       if (t === qFull)              score = Math.max(score, 10);
       else if (t.startsWith(qFull)) score = Math.max(score, 7);
     }
+    // Guests often forget the space between surname and given name (e.g.
+    // "山田太郎" instead of "山田 太郎") — compare space-stripped forms too
+    // so those queries still match the combined name fields.
+    if (!qFull.includes(" ")) {
+      const qCompact = qFull.replace(/\s+/g, "");
+      for (const t of targets) {
+        const tCompact = t.replace(/\s+/g, "");
+        if (!tCompact || tCompact === t) continue; // no space to strip, already checked above
+        if (tCompact === qCompact)              score = Math.max(score, 10);
+        else if (tCompact.startsWith(qCompact)) score = Math.max(score, 7);
+      }
+    }
     // Per-token bonus. For multi-word queries (e.g. last + first name typed
     // separately), every token must match something on this person — otherwise
     // a query like "やまだ はな" would also match other 山田 family members
@@ -199,114 +206,79 @@ export async function searchPersons(queryText, opts = {}) {
 
 // --- UI wiring (index.html) -------------------------------------------------
 
-/**
- * Collapse ranked person matches into one entry per family (surname), keeping
- * the highest-scoring member of each family as the representative used for
- * the card's plot and for the family.html link (any member's ID works there
- * since related_persons is bidirectional). People with no related_persons
- * aren't part of any family group, so they're dropped before grouping —
- * they only ever show up under Individual mode.
- */
-function groupByFamily(results) {
-  const seen = new Set();
-  const groups = [];
-  for (const person of results) {
-    if (!(person.related_persons || []).length) continue;
-    const key = person.last_name || person.id;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    groups.push(person);
-  }
-  return groups;
-}
-
-/**
- * 区画 (plot) is a family-wide fact, but admins only need to enter it on one
- * member's profile. The representative person picked by groupByFamily() is
- * whoever scored highest for this query, which may not be the member the
- * field was actually filled in on — so fall back to any other family member
- * (via related_persons) who has the value set.
- */
-function fillFamilyPlot(person) {
-  let plot = person.plot;
-  if (!plot && _personCache) {
-    const ids = new Set([person.id, ...(person.related_persons || [])]);
-    for (const p of _personCache) {
-      if (!ids.has(p.id)) continue;
-      if (p.plot) { plot = p.plot; break; }
-    }
-  }
-  return plot;
+/** "YYYY-MM-DD" → "YYYY年M月D日" for the result card. */
+function formatDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return '';
+  return `${y}年${m}月${d}日`;
 }
 
 function renderResults(results, container) {
   container.innerHTML = "";
 
-  const isFamily = searchMode === 'family';
-  const items = isFamily ? groupByFamily(results) : results;
-
-  if (!items.length) {
+  if (!results.length) {
     const msg = '該当する方が見つかりませんでした。<br>別のお名前や姓のみでお試しください。';
     container.innerHTML = `<div class="results-empty">${msg}</div>`;
     return;
   }
 
   // Count summary
-  const n = items.length;
-  const summary = isFamily ? `${n}件の家族が見つかりました。` : `${n}件の方が見つかりました。`;
-  container.innerHTML = `<p class="results-count">${summary}</p>`;
+  const n = results.length;
+  container.innerHTML = `<p class="results-count">${n}件の方が見つかりました。</p>`;
 
-  for (const person of items) {
+  for (const person of results) {
     const card = document.createElement("div");
     card.className = "family-card";
 
-    // Family mode: just the family name + plot, one box per family.
-    // Individual mode: the matching person's own name + plot.
-    const nameLabel = isFamily
-      ? `${person.last_name || ''}家`
-      : `${person.last_name || ''} ${person.first_name || ''}`.trim();
-    const plot = isFamily ? fillFamilyPlot(person) : person.plot;
-    const plotRow = plot ? `<span>区画：<strong>${plot}</strong></span>` : '';
-    const seshuBadge = `<span class="fc-seshu-badge">施主：</span>`;
+    const nameLabel = `${person.last_name || ''} ${person.first_name || ''}`.trim();
+    const birth = formatDate(person.birth_date);
+    const death = formatDate(person.death_date);
+    const metaRow = [
+      birth ? `<span>生年月日：<strong>${birth}</strong></span>` : '',
+      death ? `<span>没年月日：<strong>${death}</strong></span>` : '',
+      person.plot ? `<span>区画：<strong>${person.plot}</strong></span>` : '',
+    ].join('');
+
+    const inFamily = (person.related_persons || []).length > 0;
+    const actionsHtml = inFamily
+      ? `<button class="fc-btn-detail fc-btn-individual">個人ページ</button>
+         <button class="fc-btn-detail fc-btn-family">家族ページ</button>`
+      : `<button class="fc-btn-detail">個人ページ</button>`;
 
     card.innerHTML = `
       <div class="fc-name-row">
-        ${seshuBadge}
         <div class="fc-name">${nameLabel}</div>
       </div>
       <div class="fc-meta">
-        ${plotRow}
+        ${metaRow}
       </div>
       <div class="fc-actions">
-        <button class="fc-btn-detail">詳細</button>
+        ${actionsHtml}
       </div>`;
 
-    card.querySelector('.fc-btn-detail').addEventListener('click', () => {
+    const goTo = (dest) => {
       sessionStorage.setItem('kiosk_person', person.id);
       const q = document.getElementById('searchInput');
       sessionStorage.setItem('kiosk_last_query', q?.value || '');
-      const dest = isFamily
-        ? `family.html?person=${encodeURIComponent(person.id)}`
-        : `profile.html?person=${encodeURIComponent(person.id)}`;
       window.location.href = dest;
-    });
+    };
+
+    if (inFamily) {
+      card.querySelector('.fc-btn-individual').addEventListener('click', () => {
+        goTo(`profile.html?person=${encodeURIComponent(person.id)}`);
+      });
+      card.querySelector('.fc-btn-family').addEventListener('click', () => {
+        goTo(`family.html?person=${encodeURIComponent(person.id)}`);
+      });
+    } else {
+      card.querySelector('.fc-btn-detail').addEventListener('click', () => {
+        goTo(`profile.html?person=${encodeURIComponent(person.id)}`);
+      });
+    }
 
     container.appendChild(card);
   }
-}
-
-/** Slide the mode-switcher's highlight pill under the currently active button. */
-function positionModeSlider(activeBtn) {
-  const slider = document.getElementById('modeSlider');
-  if (!slider || !activeBtn) return;
-  slider.style.width = `${activeBtn.offsetWidth}px`;
-  slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
-}
-
-/** Re-sync the slider position — call after the search screen becomes visible/resizes. */
-export function syncModeSlider() {
-  const active = document.querySelector('#searchModeSwitcher .mode-btn.active');
-  positionModeSlider(active);
 }
 
 /**
@@ -355,20 +327,4 @@ export function initSearchScreen() {
   // Warm the cache so the first keystroke is instant.
   loadPersons().catch((err) => console.warn("[search] preload failed:", err));
   input.focus();
-
-  // Family vs individual result mode toggle.
-  const modeButtons = document.querySelectorAll('#searchModeSwitcher [data-mode]');
-  modeButtons.forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.mode === searchMode);
-    btn.addEventListener('click', () => {
-      if (btn.dataset.mode === searchMode) return;
-      searchMode = btn.dataset.mode;
-      sessionStorage.setItem('kiosk_search_mode', searchMode);
-      modeButtons.forEach((b) => b.classList.toggle('active', b === btn));
-      positionModeSlider(btn);
-      // Re-render with the new mode's grouping so existing results update
-      // immediately instead of waiting for the next keystroke.
-      if (input.value.trim()) submit();
-    });
-  });
 }

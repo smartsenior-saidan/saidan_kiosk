@@ -9,6 +9,9 @@ import {
 
 const ADVANCE_MS = 6000;
 
+const ICON_PLAY = '<svg viewBox="0 0 20 20"><path d="M5 3.5a1 1 0 0 1 1.53-.85l9 6.5a1 1 0 0 1 0 1.7l-9 6.5A1 1 0 0 1 5 16.5v-13z"/></svg>';
+const ICON_STOP = '<svg viewBox="0 0 20 20"><rect x="4" y="4" width="12" height="12" rx="1.5"/></svg>';
+
 // ── URL / id helpers ────────────────────────────────────────────────────────
 
 function getParam(key) {
@@ -214,6 +217,13 @@ function renderPerson(person, media) {
   // Top controls
   wireNav();
 
+  // Birth date
+  if (person.birth_date) {
+    set('pBirthLabel', '生誕');
+    set('pBirthDate', toEraDate(person.birth_date));
+    show('pBirthBlock');
+  }
+
   // Death date
   if (person.death_date) {
     set('pDeathLabel', '没日');
@@ -260,8 +270,33 @@ function renderPerson(person, media) {
   // Memorial audio
   if (audios.length) {
     const audio = document.getElementById('pAudio');
-    if (audio) {
+    const btn = document.getElementById('pAudioBtn');
+    if (audio && btn) {
       audio.src = audios[0].storage_url;
+
+      const updateAudioBtn = () => {
+        const playing = !audio.paused;
+        btn.innerHTML = playing ? ICON_STOP : ICON_PLAY;
+        btn.setAttribute('aria-label', playing ? '音声を停止' : '音声を再生');
+        btn.classList.toggle('is-playing', playing);
+      };
+      updateAudioBtn();
+
+      btn.addEventListener('click', () => {
+        if (audio.paused) {
+          audio.play();
+        } else {
+          audio.pause();
+          audio.currentTime = 0;
+        }
+      });
+      audio.addEventListener('play', updateAudioBtn);
+      audio.addEventListener('pause', updateAudioBtn);
+      audio.addEventListener('ended', () => {
+        audio.currentTime = 0;
+        updateAudioBtn();
+      });
+
       show('pAudioWrap');
       show('pBottom');
     }
