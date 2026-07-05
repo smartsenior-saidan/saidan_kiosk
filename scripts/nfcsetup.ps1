@@ -45,7 +45,7 @@ from smartcard.System import readers
 import ndef
 from pynput import keyboard
 
-__version__ = "1.0.0"
+__version__ = "1.2.0"
 
 DEBUG_PORT        = "9222"
 CONFIG_PATH       = Path(r"C:\ProgramData\SmartSenior\config.json")
@@ -153,10 +153,10 @@ def _detect_reader():
     try:
         rdrs = readers()
         for r in rdrs:
-            if "ACR" in str(r) or "ACS" in str(r):
+            if "ACR" in str(r) or "ACS" in str(r) or "CIR315" in str(r):
                 log(f"NFC reader: {r}")
                 return r
-        log(f"ACR122U not found. Available readers: {[str(r) for r in rdrs]}")
+        log(f"No supported NFC reader found. Available readers: {[str(r) for r in rdrs]}")
         return None
     except Exception as e:
         log_err(f"NFC detect error: {e}")
@@ -164,8 +164,9 @@ def _detect_reader():
 
 def _read_url(conn):
     try:
-        header, sw1, _ = conn.transmit([0xFF, 0xB0, 0x00, 0x04, 0x10])
+        header, sw1, sw2 = conn.transmit([0xFF, 0xB0, 0x00, 0x04, 0x10])
         if sw1 != 0x90 or header[0] != 0x03:
+            log(f"NDEF read-binary failed: SW={sw1:02X}{sw2:02X} data={bytes(header).hex()}")
             return None
         ndef_len = header[1]
         pages = min(((ndef_len + 2 + 3) // 4), 100)
@@ -215,7 +216,10 @@ def run_nfc_loop(reader):
     while True:
         try:
             conn = _wait_card(reader)
-            log("Card detected")
+            try:
+                log(f"Card detected, ATR={bytes(conn.getATR()).hex()}")
+            except Exception as e:
+                log(f"Card detected (ATR read failed: {e})")
             if remove_timer:
                 remove_timer.cancel(); remove_timer = None
             url = _read_url(conn)
@@ -337,59 +341,9 @@ Register-ScheduledTask `
 
 Write-Log "Scheduled task registered"
 
-# 9. Disable OS-level screen edge-swipe gestures (Action Center, Task View, etc.)
-# The kiosk browser runs fullscreen with no chrome, but that doesn't lock down
-# the Windows shell underneath — swiping in from a screen edge still reaches
-# the OS directly and can expose Action Center / Task View / other apps.
-# Modern Windows 11 builds read the PolicyManager/MDM-backed key below rather
-# than (or in addition to) the legacy Group Policy EdgeUI key, so both are set,
-# machine-wide (HKLM) and per-user (HKCU) — without touching Assigned Access,
-# so the NFC reader background process and QR scanner (HID keyboard input)
-# keep working normally.
-$edgeUiPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\EdgeUI"
-if (-not (Test-Path $edgeUiPath)) {
-    New-Item -Path $edgeUiPath -Force | Out-Null
-}
-New-ItemProperty -Path $edgeUiPath -Name "AllowEdgeSwipe" -Value 0 -PropertyType DWord -Force | Out-Null
-
-$edgeUiPathUser = "HKCU:\SOFTWARE\Policies\Microsoft\Windows\EdgeUI"
-if (-not (Test-Path $edgeUiPathUser)) {
-    New-Item -Path $edgeUiPathUser -Force | Out-Null
-}
-New-ItemProperty -Path $edgeUiPathUser -Name "AllowEdgeSwipe" -Value 0 -PropertyType DWord -Force | Out-Null
-
-$lockdownPath = "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\LockDown"
-if (-not (Test-Path $lockdownPath)) {
-    New-Item -Path $lockdownPath -Force | Out-Null
-}
-New-ItemProperty -Path $lockdownPath -Name "AllowEdgeSwipe" -Value 0 -PropertyType DWord -Force | Out-Null
-
-Write-Log "Edge-swipe gesture disabled (reboot required to take effect)"
-
-# 10. Make the power button do nothing instead of sleeping.
-# Pressing the power button was putting the tablet to sleep, and waking it
-# dropped guests on the Windows lock screen (requiring a swipe/PIN) instead of
-# straight back to the kiosk. Setting the power button action to "do nothing"
-# on both AC and battery means it can never trigger sleep/lock in the first
-# place, so there's nothing to swipe back in from.
-powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 0
-powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 0
-# Also cover a dedicated Sleep key, if the keyboard/cover has one — separate
-# control from the power button above, same "do nothing" goal.
-powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 0
-powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 0
-powercfg /setactive SCHEME_CURRENT
-Write-Log "Power/sleep buttons set to do nothing (no more sleep/lock screen)"
-
-# 11. Disable Connected Standby so closing the Type Cover can't sleep/lock the
-# tablet. Surface devices don't treat the Type Cover as a laptop "lid" — the
-# usual lid-close power setting has no effect here — closing it instead
-# triggers Surface's Connected Standby (Modern Standby) low-power mode, which
-# is what drops guests on the Windows lock screen. This device stays plugged
-# in as a fixed kiosk, so the battery-life tradeoff of disabling Connected
-# Standby doesn't apply.
-$powerPath = "HKLM:\System\CurrentControlSet\Control\Power"
-New-ItemProperty -Path $powerPath -Name "CsEnabled" -Value 0 -PropertyType DWord -Force | Out-Null
-Write-Log "Connected Standby disabled (reboot required to take effect)"
+# Screen edge-swipe, power/sleep button, and Connected Standby lockdown moved
+# to scripts/kiosk-lockdown.ps1 — run it separately (see that file for usage).
+# Keeping it out of this script means those settings can be flipped on/off
+# independently while testing, without re-running the whole NFC/QR setup.
 
 Write-Log "Setup complete!"
