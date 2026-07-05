@@ -68,13 +68,18 @@ OS-level lockdown for the Surface Pro tablets, kept in a separate script
 from `nfcsetup.ps1` so it can be assigned/unassigned to an Intune device
 group independently.
 
-`kiosk-lockdown.ps1` sets three things:
+`kiosk-lockdown.ps1` sets:
 1. Disables OS edge-swipe gestures (Action Center, Widgets, Task View).
-2. Sets the power/sleep button action to "do nothing" (was putting the
-   tablet to sleep and dropping guests on the Windows lock screen).
-3. Disables Connected Standby (Surface Type Covers don't use the normal
-   laptop "lid" setting — closing the cover was triggering Connected
-   Standby instead, same lock-screen problem as above).
+2. Leaves the power/sleep button at its normal "Sleep" action, but sets
+   `CONSOLELOCK = 0` so waking (power button or opening the Type Cover)
+   skips the Windows lock screen/sign-in prompt and goes straight back to
+   the kiosk. This was the actual fix for guests getting dropped on the
+   lock screen — not disabling sleep itself.
+3. Leaves Connected Standby enabled (Windows default). Surface devices only
+   support Modern Standby, not classic S3 sleep, so Connected Standby is
+   what lets the power button/Type Cover actually sleep the tablet at all —
+   disabling it isn't needed now that `CONSOLELOCK` handles the lock-screen
+   problem directly.
 
 **Important:** these are one-time registry writes, not a persistent policy.
 Unassigning `kiosk-lockdown.ps1` in Intune does NOT undo the changes — it

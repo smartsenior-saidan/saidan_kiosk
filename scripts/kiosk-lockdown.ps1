@@ -39,30 +39,27 @@ New-ItemProperty -Path $lockdownPath -Name "AllowEdgeSwipe" -Value 0 -PropertyTy
 
 Write-Log "Edge-swipe gesture disabled (reboot required to take effect)"
 
-# 2. Make the power button do nothing instead of sleeping.
-# Pressing the power button was putting the tablet to sleep, and waking it
-# dropped guests on the Windows lock screen (requiring a swipe/PIN) instead of
-# straight back to the kiosk. Setting the power button action to "do nothing"
-# on both AC and battery means it can never trigger sleep/lock in the first
-# place, so there's nothing to swipe back in from.
-powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 0
-powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 0
-# Also cover a dedicated Sleep key, if the keyboard/cover has one — separate
-# control from the power button above, same "do nothing" goal.
-powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 0
-powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 0
+# 2. Let the power/sleep button sleep the tablet normally, but skip the
+# password/lock-screen prompt on wake. Pressing the power button puts the
+# tablet to sleep as usual; CONSOLELOCK=0 means waking it (power button or
+# opening the Type Cover) goes straight back to the kiosk instead of the
+# Windows lock screen.
+powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 1
+powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 1
+powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 1
+powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 1
+powercfg /setacvalueindex SCHEME_CURRENT SUB_NONE CONSOLELOCK 0
+powercfg /setdcvalueindex SCHEME_CURRENT SUB_NONE CONSOLELOCK 0
 powercfg /setactive SCHEME_CURRENT
-Write-Log "Power/sleep buttons set to do nothing (no more sleep/lock screen)"
+Write-Log "Power/sleep button set to sleep normally; sign-in on wake disabled"
 
-# 3. Disable Connected Standby so closing the Type Cover can't sleep/lock the
-# tablet. Surface devices don't treat the Type Cover as a laptop "lid" — the
-# usual lid-close power setting has no effect here — closing it instead
-# triggers Surface's Connected Standby (Modern Standby) low-power mode, which
-# is what drops guests on the Windows lock screen. This device stays plugged
-# in as a fixed kiosk, so the battery-life tradeoff of disabling Connected
-# Standby doesn't apply.
+# 3. Keep Connected Standby enabled (Windows default). Surface devices only
+# support Modern Standby, not classic S3 sleep — Connected Standby is what
+# actually lets the power button/Type Cover put the tablet to sleep at all.
+# It's safe to leave enabled now that CONSOLELOCK above skips the lock screen
+# on wake, which was the real problem, not Connected Standby itself.
 $powerPath = "HKLM:\System\CurrentControlSet\Control\Power"
-New-ItemProperty -Path $powerPath -Name "CsEnabled" -Value 0 -PropertyType DWord -Force | Out-Null
-Write-Log "Connected Standby disabled (reboot required to take effect)"
+New-ItemProperty -Path $powerPath -Name "CsEnabled" -Value 1 -PropertyType DWord -Force | Out-Null
+Write-Log "Connected Standby left enabled (required for sleep to work on this hardware)"
 
 Write-Log "Kiosk lockdown complete!"
