@@ -46,4 +46,7 @@ $powerPath = "HKLM:\System\CurrentControlSet\Control\Power"
 New-ItemProperty -Path $powerPath -Name "CsEnabled" -Value 1 -PropertyType DWord -Force | Out-Null
 Write-Log "Connected Standby re-enabled (reboot required to take effect)"
 
+# 4. Remove the Intune detection marker.
+Remove-Item -Path "HKLM:\SOFTWARE\SmartSenior\KioskLockdown" -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Log "Kiosk lockdown undo complete!"

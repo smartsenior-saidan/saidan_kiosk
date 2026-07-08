@@ -62,4 +62,11 @@ $powerPath = "HKLM:\System\CurrentControlSet\Control\Power"
 New-ItemProperty -Path $powerPath -Name "CsEnabled" -Value 1 -PropertyType DWord -Force | Out-Null
 Write-Log "Connected Standby left enabled (required for sleep to work on this hardware)"
 
+# 4. Write the Intune detection marker so this app shows as installed.
+$markerPath = "HKLM:\SOFTWARE\SmartSenior\KioskLockdown"
+if (-not (Test-Path $markerPath)) {
+    New-Item -Path $markerPath -Force | Out-Null
+}
+New-ItemProperty -Path $markerPath -Name "Version" -Value "1.0.0" -PropertyType String -Force | Out-Null
+
 Write-Log "Kiosk lockdown complete!"

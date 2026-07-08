@@ -1,0 +1,138 @@
+;/*++
+;
+;Module Name:
+;
+;    DWBUS.INF
+;
+;Abstract:
+;    INF file for installing dwbus bus enumerator driver
+;
+;Installation Notes:
+;    Using Devcon: Type "devcon install dwbus.inf root\dwbus" to install
+;
+;--*/s
+[Version]
+Signature="$WINDOWS NT$"
+Class=System
+ClassGuid={4D36E97D-E325-11CE-BFC1-08002BE10318}
+Provider=%ProviderName%
+DriverVer = 11/16/2024,2.2.0.7
+CatalogFile=dwbus.cat
+PnpLockdown=1
+
+[DestinationDirs]
+DefaultDestDir = 12
+dwbus_Device_CoInstaller_CopyFiles = 11
+
+[SourceDisksNames]
+1 = %DiskId1%,,,""
+
+[SourceDisksFiles]
+dwbus.sys  = 1,,
+
+;*****************************************
+; dwbus  Install Section
+;*****************************************
+
+[Manufacturer]
+%StdMfg%=Standard,NTamd64
+
+; For XP and later
+[Standard.NTamd64]
+%dwbus.DeviceDesc%=dwbus_Device, root\dwbus
+
+[dwbus_Device.NT]
+CopyFiles=Drivers_Dir
+AddReg=dwusb.NT.AddReg,dwbus_ETW_AddReg,dwbus.AddReg
+
+[dwbus_Device.NT.HW]
+AddReg=dwbus_Device.NT.AddReg
+
+
+[dwbus.AddReg]
+HKR,,ConfigDialog,%REG_SZ%,serialui.dll
+HKR,,DeviceType,%REG_BINARY%,01
+HKR,,EnumPropPages,%REG_SZ%,"serialui.dll,EnumPropPages"
+HKR,,PortSubClass,%REG_BINARY%,01
+HKR,,DCB,%REG_BINARY%,1C,00,00,00,00,C2,01,00,15,20,00,00,00,00,0A,00,0A,00,08,00,00,11,13,00,00,00
+HKR,,Properties,%REG_BINARY%, 00,00,00,00, ff,00,00,00, 00,00,00,00, 00,00,00,00, 00,00,00,00, 01,00,00,00, 00,08,07,00, 00,DC,05,00
+HKLM,"System\CurrentControlSet\Services\dwbus\Parameters\","DriverVersion",%REG_SZ%,%DriverVersion%
+HKLM,"System\CurrentControlSet\Services\dwbus\Parameters\","OutputEVLog",%REG_DWORD%,%OutputEVLog%
+
+
+[dwbus_Device.NT.AddReg]                            
+HKR,,DeviceCharacteristics,0x10001,0x0100         ; Use same security checks on relative opens
+HKR,,Security,,"D:P(A;;GA;;;BA)(A;;GA;;;SY)"      ; Allow generic-all access to Built-in administrators and Local system 
+
+[Drivers_Dir]
+dwbus.sys
+
+[dwusb.NT.AddReg]
+HKR,,EnumPropPages32,,"MsPorts.dll,SerialPortPropPageProvider"
+
+;-------------- Service installation
+[dwbus_Device.NT.Services]
+AddService = dwbus,%SPSVCINST_ASSOCSERVICE%, dwbus_Service_Inst, dwbus.EventLog
+
+; -------------- dwbus driver install sections
+[dwbus_Service_Inst]
+DisplayName    = %dwbus.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START 
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\dwbus.sys
+
+[dwbus_ETW_AddReg]
+HKLM,%KeyOfAutologger%,"FileName",%REG_SZ%,"%%SystemRoot%%\System32\dwbus.etl"
+HKLM,%KeyOfAutologger%,"BufferSize",%REG_DWORD%,0x00001024
+HKLM,%KeyOfAutologger%,"FlushTimer",%REG_DWORD%,0x00000000
+HKLM,%KeyOfAutologger%,"ClockType",%REG_DWORD%,0x00000001
+HKLM,%KeyOfAutologger%,"Guid",%REG_SZ%,"{F940CA58-849F-456E-A88B-4EE29BD5313E}"
+HKLM,%KeyOfAutologger%,"LogFileMode",%REG_DWORD%,0x00000002
+HKLM,%KeyOfAutologger%,"MaxFileSize",%REG_DWORD%,0x00000080
+HKLM,%KeyOfAutologger%,"MaximumBuffers",%REG_DWORD%,0x00000001
+HKLM,%KeyOfAutologger%,"Start",%REG_DWORD%,0x00000001
+HKLM,%KeyOfAutologger%,"Status",%REG_DWORD%,0x00000000
+HKLM,%KeyOfTraceGUID%,"Enabled",%REG_DWORD%,0x00000001
+HKLM,%KeyOfTraceGUID%,"Status",%REG_DWORD%,0x00000000
+HKLM,%KeyOfTraceGUID%,"EnableLevel",%REG_DWORD%,0x000000ff
+HKLM,%KeyOfTraceGUID%,"EnableFlags",%REG_DWORD%,0xffffffff
+HKLM,%KeyOfTraceGUID%,"MatchAnyKeyword",%REG_QWORD%,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
+
+[dwbus.EventLog]
+AddReg = dwbus.AddEventLog.reg
+
+[dwbus.AddEventLog.reg]
+HKR,, EventMessageFile, %REG_EXPAND_SZ%, "%%SystemRoot%%\System32\IoLogMsg.dll;%%SystemRoot%%\System32\drivers\dwbus.sys"
+HKR,, TypesSupported, %REG_DWORD%, 7
+
+[dwbus_Device.NT.Wdf]
+KmdfService = dwbus, dwbus_wdfsect
+
+[dwbus_wdfsect]
+KmdfLibraryVersion = 1.15
+
+
+[Strings]
+REG_SZ				   = 0x00000000
+REG_DWORD              = 0x00010001
+SPSVCINST_ASSOCSERVICE = 0x00000002
+REG_QWORD              = 0x000B0001
+REG_BINARY                  = 0x00000001
+REG_EXPAND_SZ               = 0x00020000
+FLG_ADDREG_NOCLOBBER        = 0x00000002
+SERVICE_KERNEL_DRIVER       = 0x00000001
+SERVICE_DEMAND_START        = 0x3
+SERVICE_ERROR_NORMAL        = 0x00000001
+
+
+
+ProviderName = "DENSO WAVE"
+StdMfg = "(Standard system devices)"
+DiskId1 = "dwbus Static Bus Installation Disk #1"
+dwbus.DeviceDesc = "DENSO WAVE Static Bus Enumerator"
+dwbus.SVCDESC = "DENSO WAVE Static Bus Enumerator"
+DriverVersion = "2.2.0.7"
+OutputEVLog = "1"
+KeyOfTraceGUID   = "SYSTEM\CurrentControlSet\Control\WMI\Autologger\dwbus\{F940CA58-849F-456E-A88B-4EE29BD5313E}"
+KeyOfAutologger  = "SYSTEM\CurrentControlSet\Control\WMI\Autologger\dwbus"

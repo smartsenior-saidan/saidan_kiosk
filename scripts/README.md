@@ -27,6 +27,8 @@ there.
 
 The Elecom reader needs its own driver installed on Windows before PC/SC
 (and this script) can see it — it does not show up at all until installed.
+A factory reset wipes this driver, so it needs reinstalling on every
+freshly-provisioned device.
 
 Driver download portal (search by model number):
 `https://www2.elecom.co.jp/search/download/search.asp?kataban=`
@@ -38,6 +40,24 @@ matches before using these):
 
 After installing, confirm in Device Manager that it shows up under
 **Smart card readers** as `CIR315` with no warning icon.
+
+The downloaded package (`drivers/ELECOM_MR-ICA001_CIR315/`) is an MSI
+installer (`Package/CIR315DriverInstallerx64.msi`), so it installs silently
+via the standard `msiexec /i ... /quiet /norestart` — no vendor-specific
+flags needed. `kiosk-launch-install.ps1` runs this automatically as one of
+its steps; see that script rather than running the MSI by hand.
+
+### QR scanner driver
+
+The QR/barcode scanner needs its own driver too (DENSO WAVE "Active
+USB-COM Port") — without it, the scanner never shows up as a COM port at
+all. Same factory-reset caveat as the Elecom driver above.
+
+The downloaded package (`drivers/ActiveUSBCOM_2207_J/`) ships its own
+`Install.exe` with a documented silent-install flag (`-S` — see
+`ActiveUSBCOM_UsersGuide.pdf` section 2.1.5). `kiosk-launch-install.ps1`
+runs this automatically; see that script rather than running `Install.exe`
+by hand.
 
 ### Troubleshooting
 

@@ -1,0 +1,159 @@
+;; Copyright(C) 2017 SciencePark Corp., DENSO WAVE INC.
+;; DENSO WAVE USB Driver
+
+;--------- Version Section ---------------------------------------------------
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=USB
+ClassGUID={36fc9e60-c465-11cf-8056-444553540000}
+Provider=%Provider%
+DriverVer = 11/16/2024,2.2.0.7
+CatalogFile=dwusb.cat
+PnpLockdown=1
+
+[ControlFlags]
+; Pnp drivers should not be installable via non-PnP hardware dialogs
+ExcludeFromSelect = *
+
+
+;--------- DestinationDirs Section -------------------------------------------
+
+[DestinationDirs]
+; 10 = Windows Directory
+DefaultDestDir = 10
+; 12 = Drivers Directory 
+dwusb_DDI.NT.Copy = 12
+
+
+;--------- SourceDiskNames and SourceDiskFiles Section -----------------------
+; These sections identify source disks and files for installation.
+
+[SourceDisksNames]
+1 = %DiskId1%,,,""
+
+[SourceDisksFiles]
+dwusb.sys  = 1,,
+
+
+;--------- Manufacturer and Models Sections ----------------------------------
+
+[Manufacturer]
+%MfgName% = dwusb_Mfg, NTx86 ,NTamd64
+
+[dwusb_Mfg.NTx86]
+%dwusb_DeviceDesc%=dwusb_DDI, USB\VID_076D&PID_0006
+
+[dwusb_Mfg.NTamd64]
+%dwusb_DeviceDesc%=dwusb_DDI, USB\VID_076D&PID_0006
+
+
+;---------- DDInstall Sections -----------------------------------------------
+
+[dwusb_DDI.NT]
+CopyFiles=dwusb_DDI.NT.Copy
+AddReg=dwusb.AddReg, dwusb_ETW_AddReg
+
+[dwusb_DDI.NT.Services]
+Addservice = dwusb, %FLG_ADDREG_NOCLOBBER%, dwusb_Service.AddService, dwusb.EventLog
+
+; --------- Files ----------------------
+[dwusb_DDI.NT.Copy]
+dwusb.sys
+
+
+; --------- Registry ----------------------
+
+[dwusb.AddReg]
+HKLM,"System\CurrentControlSet\Services\dwusb\Parameters\","DriverVersion",,%DriverVersion% 
+
+[dwusb_ETW_AddReg]
+; Setting ETW Log Tracing
+HKLM,%KeyOfAutologger%,"FileName",%REG_SZ%,"%%SystemRoot%%\System32\dwusb.etl"
+HKLM,%KeyOfAutologger%,"BufferSize",%REG_DWORD%,0x00001024
+HKLM,%KeyOfAutologger%,"FlushTimer",%REG_DWORD%,0x00000000
+HKLM,%KeyOfAutologger%,"ClockType",%REG_DWORD%,0x00000001
+HKLM,%KeyOfAutologger%,"Guid",%REG_SZ%,"{326821A4-B43B-4DDA-BB16-8866F02E5C64}"
+HKLM,%KeyOfAutologger%,"LogFileMode",%REG_DWORD%,0x00000002
+HKLM,%KeyOfAutologger%,"MaxFileSize",%REG_DWORD%,0x00000080
+HKLM,%KeyOfAutologger%,"MaximumBuffers",%REG_DWORD%,0x00000001
+HKLM,%KeyOfAutologger%,"Start",%REG_DWORD%,0x00000001
+HKLM,%KeyOfAutologger%,"Status",%REG_DWORD%,0x00000000
+HKLM,%KeyOfTraceGUID%,"Enabled",%REG_DWORD%,0x00000001
+HKLM,%KeyOfTraceGUID%,"Status",%REG_DWORD%,0x00000000
+HKLM,%KeyOfTraceGUID%,"EnableLevel",%REG_DWORD%,0x000000ff
+HKLM,%KeyOfTraceGUID%,"EnableFlags",%REG_DWORD%,0xffffffff
+HKLM,%KeyOfTraceGUID%,"MatchAnyKeyword",%REG_QWORD%,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
+
+; Enable manually generate the crashdump
+HKLM,%KbdPS2Parameters%,"CrashOnCtrlScroll",%REG_DWORD%,0x00000001
+HKLM,%KbdUSBParameters%,"CrashOnCtrlScroll",%REG_DWORD%,0x00000001
+
+[dwusb.EventLog]
+AddReg = dwusb.AddEventLog.reg
+
+[dwusb.AddEventLog.reg]
+HKR,, EventMessageFile, %REG_EXPAND_SZ%, "%%SystemRoot%%\System32\IoLogMsg.dll;%%SystemRoot%%\System32\drivers\dwusb.sys"
+HKR,, TypesSupported, %REG_DWORD%, 7
+
+
+; --------- Service ----------------------
+
+[dwusb_Service.AddService]
+DisplayName    = %dwusb_DeviceDesc%
+ServiceType    = %SERVICE_KERNEL_DRIVER%
+StartType      = %SERVICE_DEMAND_START%
+ErrorControl   = %SERVICE_ERROR_NORMAL%
+ServiceBinary  = %12%\dwusb.sys
+LoadOrderGroup = Base
+
+
+;--------- Strings Section ---------------------------------------------------
+
+[Strings]
+Provider = "DENSO WAVE"
+MfgName = "DENSO WAVE"
+dwusb_DeviceDesc = "DENSO WAVE USB Device"
+dwusb_Uninstall = "DENSO WAVE Active USB-COM Port"
+dwusb_SvcDesc = "Driver for dwusb Device"
+DiskId1 = "DENSO WAVE USB Device Installation Disk #1"
+DriverVersion = "2.2.0.7"
+Publisher = "DENSO WAVE INCORPORATED"
+
+KbdPS2Parameters = "SYSTEM\CurrentControlSet\Services\i8042prt\Parameters"
+KbdUSBParameters = "SYSTEM\CurrentControlSet\Services\kbdhid\Parameters"
+KeyOfAutologger  = "SYSTEM\CurrentControlSet\Control\WMI\Autologger\dwusb"
+KeyOfTraceGUID   = "SYSTEM\CurrentControlSet\Control\WMI\Autologger\dwusb\{326821A4-B43B-4DDA-BB16-8866F02E5C64}"
+
+REG_SZ                      = 0x00000000
+REG_MULTI_SZ                = 0x00010000
+REG_EXPAND_SZ               = 0x00020000
+REG_BINARY                  = 0x00000001
+REG_DWORD                   = 0x00010001
+REG_QWORD                   = 0x000B0001
+REG_NONE                    = 0x00020001
+
+SERVICE_KERNEL_DRIVER       = 0x00000001
+SERVICE_FILE_SYSTEM_DRIVER  = 0x00000002
+SERVICE_ADAPTER             = 0x00000004
+SERVICE_RECOGNIZER_DRIVER   = 0x00000008
+
+SERVICE_BOOT_START          = 0x0
+SERVICE_SYSTEM_START        = 0x1
+SERVICE_AUTO_START          = 0x2
+SERVICE_DEMAND_START        = 0x3
+SERVICE_DISABLED            = 0x4
+
+SERVICE_ERROR_IGNORE        = 0x00000000
+SERVICE_ERROR_NORMAL        = 0x00000001
+SERVICE_ERROR_SEVERE        = 0x00000002
+SERVICE_ERROR_CRITICAL      = 0x00000003
+
+FLG_ADDREG_NOCLOBBER        = 0x00000002
+FLG_ADDREG_DELVAL           = 0x00000004
+FLG_ADDREG_APPEND           = 0x00000008
+FLG_ADDREG_KEYONLY          = 0x00000010
+FLG_ADDREG_OVERWRITEONLY    = 0x00000020
+FLG_ADDREG_64BITKEY         = 0x00001000
+FLG_ADDREG_KEYONLY_COMMON   = 0x00002000
+FLG_ADDREG_32BITKEY         = 0x00004000
