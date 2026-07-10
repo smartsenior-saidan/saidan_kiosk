@@ -28,7 +28,7 @@ import {
   personMediaCollection,
   personMediaDoc,
 } from "./firebase.js?v=3";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=17";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=18";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -583,6 +583,7 @@ function readForm() {
     kaimyo: get("kaimyo"),
     birth_date: get("birthDate"),
     death_date: get("deathDate"),
+    manual_age: get("manualAge") ? Number(get("manualAge")) : null,
     plot_section: section,
     plot_row: row,
     plot,          // combined for backward-compat display/search
@@ -847,6 +848,7 @@ async function loadForEdit(person) {
   set("kaimyo",         person.kaimyo || person.posthumous_name);
   set("birthDate",      person.birth_date);
   set("deathDate",      person.death_date);
+  set("manualAge",      person.manual_age != null ? String(person.manual_age) : "");
   set("plotSection",    person.plot_section);
   set("plotRow",        person.plot_row);
   set("biography",      person.biography);

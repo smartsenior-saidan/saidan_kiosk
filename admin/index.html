@@ -180,6 +180,12 @@
                       </div>
                     </div>
 
+                    <div class="field" style="margin-top:12px">
+                      <label for="manualAge" data-i18n="form.manualAge">Age at passing (manual)</label>
+                      <input id="manualAge" type="number" min="0" max="150" step="1" placeholder="e.g. 82" data-i18n-ph="ph.manualAge" />
+                      <p class="field-hint" data-i18n="hint.manualAge">Only used when the date of birth is unknown. If both dates above are filled in, age is calculated automatically and this is ignored.</p>
+                    </div>
+
                     <div class="form-row">
                       <div class="field">
                         <label for="plotSection" data-i18n="form.plotSection">Section</label>
@@ -312,7 +318,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=27";
+      import { initAdminPortal } from "./js/admin.js?v=28";
       initAdminPortal();
     </script>
   </body>

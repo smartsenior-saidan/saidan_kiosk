@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" />
-    <link rel="stylesheet" href="css/kiosk.css?v=66" />
+    <link rel="stylesheet" href="css/kiosk.css?v=68" />
     <script src="js/config.js"></script>
     <style>
       /* ── Slideshow nav bar ─────────────────────────────────────────────── */
@@ -206,6 +206,21 @@
         el.classList.toggle('is-xlong', len > xlongAt);
       }
 
+      // Birth date / death date / age must share ONE font size (sized off
+      // whichever is longest), not each shrink independently.
+      function setGroupFit(entries, { longAt, xlongAt }) {
+        const maxLen = Math.max(0, ...entries.map((e) => (e.text || '').length));
+        const isLong = maxLen > longAt && maxLen <= xlongAt;
+        const isXlong = maxLen > xlongAt;
+        entries.forEach(({ id, text }) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.textContent = text || '';
+          el.classList.toggle('is-long', isLong);
+          el.classList.toggle('is-xlong', isXlong);
+        });
+      }
+
       // ── State ────────────────────────────────────────────────────────────
 
       let members       = [];
@@ -260,27 +275,31 @@
         if (kaimyo) { setFit('pKaimyo', kaimyo, { longAt: 6, xlongAt: 10 }); show('pKaimyo'); }
         else hide('pKaimyo');
 
-        // Birth date
+        // Birth date / death date / age — sized together via setGroupFit so
+        // all three share one font size regardless of which is longest.
+        const infoEntries = [];
+
         if (person.birth_date) {
           set('pBirthLabel', '生誕');
-          setFit('pBirthDate', toEraDate(person.birth_date), { longAt: 8, xlongAt: 11 });
+          infoEntries.push({ id: 'pBirthDate', text: toEraDate(person.birth_date) });
           show('pBirthBlock');
         } else hide('pBirthBlock');
 
-        // Death date
         if (person.death_date) {
           set('pDeathLabel', '没日');
-          setFit('pDeathDate', toEraDate(person.death_date), { longAt: 8, xlongAt: 11 });
+          infoEntries.push({ id: 'pDeathDate', text: toEraDate(person.death_date) });
           show('pDeathBlock');
         } else hide('pDeathBlock');
 
-        // Age
-        const age = computeAge(person.birth_date, person.death_date);
+        const age = computeAge(person.birth_date, person.death_date)
+          ?? (person.manual_age != null ? Number(person.manual_age) : null);
         if (age != null) {
           set('pAgeLabel', '享年');
-          set('pAge', `${toKanji(age)}歳`);
+          infoEntries.push({ id: 'pAge', text: `${toKanji(age)}歳` });
           show('pAgeBlock');
         } else hide('pAgeBlock');
+
+        setGroupFit(infoEntries, { longAt: 8, xlongAt: 11 });
 
         // Photos
         document.getElementById('pSlides').innerHTML = '';

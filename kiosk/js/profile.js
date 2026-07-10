@@ -171,6 +171,22 @@ function setFit(id, text, { longAt, xlongAt }) {
   el.classList.toggle('is-long', len > longAt && len <= xlongAt);
   el.classList.toggle('is-xlong', len > xlongAt);
 }
+// Birth date / death date / age must all render at the SAME font size as
+// each other (sized off whichever one is longest), not each shrunk
+// independently — otherwise a long era date next to a short "◯◯歳" age
+// reads as mismatched/broken rather than intentionally responsive.
+function setGroupFit(entries, { longAt, xlongAt }) {
+  const maxLen = Math.max(0, ...entries.map((e) => (e.text || '').length));
+  const isLong = maxLen > longAt && maxLen <= xlongAt;
+  const isXlong = maxLen > xlongAt;
+  entries.forEach(({ id, text }) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text || '';
+    el.classList.toggle('is-long', isLong);
+    el.classList.toggle('is-xlong', isXlong);
+  });
+}
 function show(id)  { document.getElementById(id)?.classList.remove('hidden'); }
 function hide(id)  { document.getElementById(id)?.classList.add('hidden'); }
 
@@ -229,27 +245,33 @@ function renderPerson(person, media) {
   // Top controls
   wireNav();
 
-  // Birth date
+  // Birth date / death date / age — sized together via setGroupFit so all
+  // three share one font size regardless of which value is longest.
+  const infoEntries = [];
+
   if (person.birth_date) {
     set('pBirthLabel', '生誕');
-    setFit('pBirthDate', toEraDate(person.birth_date), { longAt: 8, xlongAt: 11 });
+    infoEntries.push({ id: 'pBirthDate', text: toEraDate(person.birth_date) });
     show('pBirthBlock');
   }
 
-  // Death date
   if (person.death_date) {
     set('pDeathLabel', '没日');
-    setFit('pDeathDate', toEraDate(person.death_date), { longAt: 8, xlongAt: 11 });
+    infoEntries.push({ id: 'pDeathDate', text: toEraDate(person.death_date) });
     show('pDeathBlock');
   }
 
-  // Age at death
-  const age = computeAge(person.birth_date, person.death_date);
+  // Fall back to the admin's manually-entered age when the birth date is
+  // unknown (computeAge needs both dates to work out an exact age).
+  const age = computeAge(person.birth_date, person.death_date)
+    ?? (person.manual_age != null ? Number(person.manual_age) : null);
   if (age != null) {
     set('pAgeLabel', '享年');
-    set('pAge', `${toKanji(age)}歳`);
+    infoEntries.push({ id: 'pAge', text: `${toKanji(age)}歳` });
     show('pAgeBlock');
   }
+
+  setGroupFit(infoEntries, { longAt: 8, xlongAt: 11 });
 
   // Photos or initials placeholder
   if (photos.length) {

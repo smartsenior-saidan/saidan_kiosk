@@ -11,7 +11,10 @@
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('/private/tmp/claude-501/-Users-linusfujisawa-Desktop-Programming-SmartSenior-KioskProgram/924a081b-94b9-499f-af9a-4c6ed47b398e/scratchpad/kiosk_reader_extracted.py'\\).read\\(\\)\\)\")",
       "Bash(sed -i '' 's/kiosk\\\\.css?v=42/kiosk.css?v=43/g' index.html profile.html family.html thankyou.html slideshow.html)",
       "Bash(sed -i '' \"s/const CACHE = 'smartsenior-v37'/const CACHE = 'smartsenior-v38'/\" sw.js)",
-      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless=new --screenshot=/private/tmp/claude-501/-Users-linusfujisawa-Desktop-Programming-SmartSenior-KioskProgram/924a081b-94b9-499f-af9a-4c6ed47b398e/scratchpad/birthdate_top.png --window-size=1400,900 --force-device-scale-factor=1 file:///private/tmp/claude-501/-Users-linusfujisawa-Desktop-Programming-SmartSenior-KioskProgram/924a081b-94b9-499f-af9a-4c6ed47b398e/scratchpad/preview_birthdate.html)"
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless=new --screenshot=/private/tmp/claude-501/-Users-linusfujisawa-Desktop-Programming-SmartSenior-KioskProgram/924a081b-94b9-499f-af9a-4c6ed47b398e/scratchpad/birthdate_top.png --window-size=1400,900 --force-device-scale-factor=1 file:///private/tmp/claude-501/-Users-linusfujisawa-Desktop-Programming-SmartSenior-KioskProgram/924a081b-94b9-499f-af9a-4c6ed47b398e/scratchpad/preview_birthdate.html)",
+      "Bash(node --check kiosk/js/profile.js)",
+      "Bash(node --check admin/js/admin.js)",
+      "Bash(node --check admin/js/i18n.js)"
     ]
   }
 }

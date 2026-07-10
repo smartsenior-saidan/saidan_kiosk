@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" />
-    <link rel="stylesheet" href="css/kiosk.css?v=66" />
+    <link rel="stylesheet" href="css/kiosk.css?v=68" />
     <script src="js/config.js"></script>
   </head>
   <body class="family-page lang-ja">
@@ -97,9 +97,11 @@
             membersEl.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
             membersEl.innerHTML = members.map((m) => {
               const name = `${m.last_name || ''}　${m.first_name || ''}`.trim();
-              const years = m.birth_date || m.death_date
-                ? `${(m.birth_date || '').slice(0,4) || '?'} – ${(m.death_date || '').slice(0,4) || '?'}`
-                : '';
+              // Full range when both dates are known; otherwise just show
+              // whichever single date is available (no dangling "? –").
+              const years = m.birth_date && m.death_date
+                ? `${m.birth_date.slice(0,4)} – ${m.death_date.slice(0,4)}`
+                : (m.death_date || m.birth_date || '').slice(0,4);
               return `
                 <button class="f-member-btn" data-id="${m.id}">
                   <span class="f-member-name">${name}</span>
