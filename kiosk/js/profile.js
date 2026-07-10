@@ -159,6 +159,18 @@ function set(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text || '';
 }
+
+// Longer text (a long name, kaimyo, or era date) gets a smaller font via
+// these classes instead of a fixed size, so an unusually long value shrinks
+// to fit its column rather than crowding neighboring elements or the photo.
+function setFit(id, text, { longAt, xlongAt }) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text || '';
+  const len = (text || '').length;
+  el.classList.toggle('is-long', len > longAt && len <= xlongAt);
+  el.classList.toggle('is-xlong', len > xlongAt);
+}
 function show(id)  { document.getElementById(id)?.classList.remove('hidden'); }
 function hide(id)  { document.getElementById(id)?.classList.add('hidden'); }
 
@@ -208,11 +220,11 @@ function renderPerson(person, media) {
   // Name
   const displayName = `${person.last_name || ''}${person.first_name || ''}`.trim();
   document.title = `${displayName.replace('　', ' ')} — SmartSenior`;
-  set('pName', displayName);
+  setFit('pName', displayName, { longAt: 4, xlongAt: 6 });
 
   // Posthumous Buddhist name (戒名), if recorded
   const kaimyo = person.kaimyo || person.posthumous_name || '';
-  if (kaimyo) { set('pKaimyo', kaimyo); show('pKaimyo'); }
+  if (kaimyo) { setFit('pKaimyo', kaimyo, { longAt: 6, xlongAt: 10 }); show('pKaimyo'); }
 
   // Top controls
   wireNav();
@@ -220,14 +232,14 @@ function renderPerson(person, media) {
   // Birth date
   if (person.birth_date) {
     set('pBirthLabel', '生誕');
-    set('pBirthDate', toEraDate(person.birth_date));
+    setFit('pBirthDate', toEraDate(person.birth_date), { longAt: 8, xlongAt: 11 });
     show('pBirthBlock');
   }
 
   // Death date
   if (person.death_date) {
     set('pDeathLabel', '没日');
-    set('pDeathDate', toEraDate(person.death_date));
+    setFit('pDeathDate', toEraDate(person.death_date), { longAt: 8, xlongAt: 11 });
     show('pDeathBlock');
   }
 
