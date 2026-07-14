@@ -12,7 +12,7 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <meta name="theme-color" content="#0071e3" />
     <link rel="stylesheet" href="css/style.css?v=3" />
-    <link rel="stylesheet" href="css/kiosk.css?v=68" />
+    <link rel="stylesheet" href="css/kiosk.css?v=73" />
     <!-- Pins this kiosk to its memorial site (tenant). Runs before modules. -->
     <script src="js/config.js"></script>
   </head>
@@ -57,21 +57,6 @@
           </div>
         </div>
         <div class="m-dots hidden" id="pDots"></div>
-
-        <!-- Audio player + memorial video + biography toggle. Lives in the
-             normal flex flow of .m-center (not a separate absolutely
-             positioned bar) so the photo shifts to make room instead of
-             being overlapped when some combination of these is shown. -->
-        <div class="m-bottom hidden" id="pBottom">
-          <div class="m-audio-wrap hidden" id="pAudioWrap">
-            <audio id="pAudio" preload="metadata"></audio>
-            <button class="m-audio-btn" id="pAudioBtn" aria-label="音声を再生"></button>
-          </div>
-          <button class="m-link hidden" id="pBioToggle">メッセージを読む</button>
-          <div class="m-video-wrap hidden" id="pVideoWrap">
-            <video class="m-video" id="pVideo" controls playsinline preload="metadata"></video>
-          </div>
-        </div>
       </div>
 
       <!-- Left column: birth date + death date + age (vertical for JA) -->
@@ -89,6 +74,21 @@
             <span class="m-info-label" id="pAgeLabel">享年</span>
             <span class="m-info-value" id="pAge"></span>
           </div>
+        </div>
+      </div>
+
+      <!-- Audio player + biography toggle + memorial video. A direct child of
+           .m-stage rather than of .m-center: on tablet it's absolutely
+           positioned against .m-stage either way, and on mobile this lets it
+           order below the dates inside the sheet. -->
+      <div class="m-bottom hidden" id="pBottom">
+        <div class="m-audio-wrap hidden" id="pAudioWrap">
+          <audio id="pAudio" preload="metadata"></audio>
+          <button class="m-audio-btn" id="pAudioBtn" aria-label="音声を再生"></button>
+        </div>
+        <button class="m-link hidden" id="pBioToggle">メッセージを読む</button>
+        <div class="m-video-wrap hidden" id="pVideoWrap">
+          <video class="m-video" id="pVideo" controls playsinline preload="metadata"></video>
         </div>
       </div>
 

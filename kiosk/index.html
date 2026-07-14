@@ -24,7 +24,7 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap"
     />
-    <link rel="stylesheet" href="css/kiosk.css?v=69" />
+    <link rel="stylesheet" href="css/kiosk.css?v=73" />
     <!-- Pins this kiosk to its memorial site (tenant). Runs before modules. -->
     <script src="js/config.js"></script>
   </head>
@@ -363,8 +363,22 @@
         // Layout is now handled by flex — nothing to calculate
       }
 
-      // ── Keyboard: always visible on search screen ─────────────────────
+      // ── Keyboard ──────────────────────────────────────────────────────
+      // The kiosk tablet has no physical keyboard, so it gets the custom
+      // on-screen kana grid and the input stays locked (readonly +
+      // inputmode=none) to keep the native one from opening. A phone has a
+      // native IME that handles Japanese better, so below this breakpoint we
+      // release the lock and let it take over; kiosk.css hides the grid to
+      // match. Must stay in sync with the 700px breakpoint in kiosk.css.
+      const useNativeKeyboard = window.matchMedia("(max-width: 700px)").matches;
+
+      if (useNativeKeyboard) {
+        input.removeAttribute("readonly");
+        input.removeAttribute("inputmode");
+      }
+
       function openKeyboard() {
+        if (useNativeKeyboard) return;
         keyboardArea.classList.add("open");
       }
 

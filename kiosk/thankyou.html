@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" />
-    <link rel="stylesheet" href="css/kiosk.css?v=71" />
+    <link rel="stylesheet" href="css/kiosk.css?v=73" />
     <script src="js/config.js"></script>
     <style>
       .ty-page {
@@ -118,6 +118,43 @@
       }
 
       body.has-tenant-bg .ty-page { background: transparent; }
+
+      /* Mobile — Japanese breaks between any two characters, so at phone
+         widths the kiosk sizes stranded a single character on its own line
+         ("ありがとうございまし / た"). Size each string to fit one line at
+         360px and trim the letter-spacing that was pushing it over; balance
+         evens out anything that still wraps instead of leaving an orphan. */
+      @media (max-width: 700px) {
+        .ty-page {
+          padding: 28px 20px;
+          gap: clamp(12px, 2vh, 24px);
+        }
+
+        .ty-main {
+          font-size: clamp(1.5rem, 6.4vw, 2.8rem);
+          letter-spacing: 0.06em;
+          text-wrap: balance;
+        }
+
+        .ty-sub {
+          font-size: clamp(1.05rem, 4.4vw, 2rem);
+          letter-spacing: 0.02em;
+          text-wrap: balance;
+        }
+
+        .ty-countdown-ring,
+        .ty-ring-svg {
+          width: 84px;
+          height: 84px;
+        }
+
+        .ty-countdown-num { font-size: 1.7rem; }
+
+        .ty-countdown-label {
+          font-size: clamp(1rem, 4vw, 1.7rem);
+          text-wrap: balance;
+        }
+      }
     </style>
   </head>
   <body>

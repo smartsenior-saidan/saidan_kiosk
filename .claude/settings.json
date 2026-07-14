@@ -14,7 +14,11 @@
       "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless=new --screenshot=/private/tmp/claude-501/-Users-linusfujisawa-Desktop-Programming-SmartSenior-KioskProgram/924a081b-94b9-499f-af9a-4c6ed47b398e/scratchpad/birthdate_top.png --window-size=1400,900 --force-device-scale-factor=1 file:///private/tmp/claude-501/-Users-linusfujisawa-Desktop-Programming-SmartSenior-KioskProgram/924a081b-94b9-499f-af9a-4c6ed47b398e/scratchpad/preview_birthdate.html)",
       "Bash(node --check kiosk/js/profile.js)",
       "Bash(node --check admin/js/admin.js)",
-      "Bash(node --check admin/js/i18n.js)"
+      "Bash(node --check admin/js/i18n.js)",
+      "Bash(python3 -c ' *)",
+      "Bash(pip3 install *)",
+      "Bash(npx --no-install playwright screenshot --viewport-size=390,844 --block-service-workers --wait-for-timeout=2200 \"http://localhost:8765/__test_bg.html\" bg2_profile_390x844.png)",
+      "Bash(node -e ' *)"
     ]
   }
 }

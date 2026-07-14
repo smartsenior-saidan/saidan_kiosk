@@ -138,6 +138,47 @@ body.bg-loading {
   margin: 0;
 }
 
+/* ── Mobile home screen ──
+   Japanese has no spaces, so a line can break between *any* two characters.
+   At phone widths the kiosk sizes overflowed and stranded a single character
+   on its own line ("ご来館ありがとうございま / す。"). Each string below is
+   sized to fit one line at 360px; text-wrap:balance evens out anything that
+   still has to wrap rather than leaving an orphan. ── */
+@media (max-width: 700px) {
+  .screen-home {
+    padding: clamp(28px, 5vh, 56px) 20px;
+    gap: clamp(4px, 1.5vh, 20px);
+  }
+
+  .home-greeting-main {
+    font-size: clamp(1.4rem, 6.2vw, 2.8rem);
+    text-wrap: balance;
+  }
+
+  .home-greeting-sub {
+    margin: 8px 0 0;
+    font-size: clamp(1.05rem, 4.4vw, 2rem);
+    text-wrap: balance;
+  }
+
+  .home-start-btn {
+    width: min(100%, 420px);
+    height: clamp(64px, 8.5vh, 88px);
+    margin: 12px 0;
+    font-size: clamp(1.25rem, 5.2vw, 2.1rem);
+  }
+
+  .home-start-hint {
+    font-size: clamp(0.9rem, 3.8vw, 1.3rem);
+    text-wrap: balance;
+  }
+
+  .home-ic-note {
+    padding: 0;
+    font-size: clamp(1rem, 4.2vw, 2rem);
+  }
+}
+
 /* ============================================================
    TENANT BACKGROUND — applied to body on index + family pages
    ============================================================ */
@@ -377,6 +418,60 @@ body.has-tenant-bg .f-member-years {
   .kb-space,
   .kb-clear-all {
     height: 54px;
+  }
+}
+
+/* ============================================================
+   MOBILE — search screen
+   The on-screen kana keyboard exists because the kiosk tablet has no
+   physical keyboard. A phone has a native IME that handles Japanese
+   better and appears on focus, so phones use that instead — the custom
+   grid can't fit 10 columns plus a special column at this width, and
+   hiding it gives the results the whole screen. search.js is driven by
+   the input's `input` event, which native typing fires either way.
+   index.html drops the readonly/inputmode lock at this breakpoint.
+   ============================================================ */
+@media (max-width: 700px) {
+  .keyboard-area { display: none !important; }
+
+  /* Left padding only has to clear the circular back button now. */
+  .search-input-row {
+    gap: 10px;
+    padding: 14px 14px 10px 80px;
+  }
+
+  .search-input-wrap input {
+    height: 56px;
+    padding: 0 48px 0 18px;
+    font-size: 1.15rem;
+    border-radius: 16px;
+  }
+
+  /* Redundant on a phone — results already update live as you type, and the
+     native keyboard's return key submits. Dropping it gives the input the
+     rest of the row, which it needs at this width. */
+  .search-go-btn { display: none; }
+
+  .search-body { padding: 0 14px 14px; }
+
+  .search-results-panel {
+    width: 100% !important;
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+  }
+
+  /* Result cards: roomier tap targets, text sized for a phone. */
+  .fc-name { font-size: 1.5rem; }
+  .fc-meta { font-size: 1rem; }
+
+  /* Two buttons share the card's width here, so the label has to stop
+     breaking mid-word ("個人ペ / ージ") — trim the inherited 1.6em padding. */
+  .fc-btn-detail {
+    height: 54px;
+    padding: 0 8px;
+    font-size: 1rem;
+    white-space: nowrap;
   }
 }
 
@@ -1427,6 +1522,263 @@ body.has-tenant-bg .f-member-years {
   color: var(--color-text-muted);
 }
 
+/* ============================================================
+   MOBILE — profile / slideshow stage
+   The tablet stage sets kaimyo+name / photo / dates as three columns
+   of vertical Japanese text side by side. A phone has no width budget
+   for that (the name and dates get clipped off-screen), so rather than
+   compress it, phones get a different composition entirely: a
+   full-bleed hero photo with a rounded white sheet pulled up over its
+   bottom edge, holding the name, date pills, and actions.
+   ============================================================ */
+@media (max-width: 700px), (max-height: 520px) and (max-width: 1000px) {
+  /* html.kiosk body pins overflow:hidden and outranks .profile-page,
+     so the page can only scroll if we match that specificity. */
+  html.kiosk body.profile-page {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .profile-page {
+    /* Hero height drives the sheet's top edge too — keep them in sync. */
+    --hero-h: clamp(240px, 46vh, 420px);
+    --sheet-lift: 28px;
+  }
+
+  /* Stage becomes one scrolling column instead of an absolutely
+     positioned, full-viewport three-column stage. */
+  .m-stage {
+    position: relative;
+    inset: auto;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    min-height: 100%;
+    padding: 0 0 40px;
+    gap: 18px;
+  }
+
+  /* The sheet. Painted behind the text but in front of the photo, so it
+     reads as a card lifted over the hero's bottom edge. */
+  .m-stage::before {
+    content: "";
+    position: absolute;
+    top: calc(var(--hero-h) - var(--sheet-lift));
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    background: #fff;
+    border-radius: 28px 28px 0 0;
+    box-shadow: 0 -10px 34px rgba(0, 0, 0, 0.1);
+  }
+
+  /* With a tenant or per-person background set, a solid sheet would hide it
+     completely below the hero. Frost it instead so the background reads
+     through the sheet. The alpha is deliberately low (and the blur light) —
+     push either up and the backdrop washes out to plain white; the slight
+     blur is what keeps the name and dates legible over a busy image. */
+  body.has-tenant-bg .m-stage::before {
+    background: rgba(255, 255, 255, 0.38);
+    backdrop-filter: blur(3px) saturate(1.05);
+    -webkit-backdrop-filter: blur(3px) saturate(1.05);
+  }
+
+  /* Opaque pills would read as solid patches on the frosted sheet. */
+  body.has-tenant-bg .m-info {
+    background: rgba(255, 255, 255, 0.5);
+  }
+
+  /* Hero, then name, then dates, then actions. */
+  .m-center     { order: 1; }
+  .m-side-right { order: 2; }
+  .m-side-left  { order: 3; }
+  .m-bottom     { order: 4; }
+
+  /* position:relative + no z-index keeps the photo *under* the sheet
+     (which is z-index 1) while the sheet's contents sit above it. */
+  .m-center {
+    display: block;
+    position: relative;
+    width: 100%;
+    flex: none;
+  }
+
+  .m-side,
+  .m-bottom {
+    position: relative;
+    z-index: 2;
+    flex: none;
+    width: 100%;
+    padding: 0 24px;
+  }
+
+  /* ── Hero photo — full-bleed, no frame ── */
+  .m-photo {
+    width: 100%;
+    height: var(--hero-h);
+    aspect-ratio: auto;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* Carousel dots float on the photo, clear of the sheet's rounded top. */
+  .m-dots {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--sheet-lift) + 14px);
+    transform: translateX(-50%);
+  }
+  .p-dot {
+    background: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  }
+  .p-dot.active { background: #fff; }
+
+  /* ── Floating controls over the hero ── */
+  .m-btn-back,
+  .m-btn-end {
+    position: fixed;
+    top: 16px;
+    min-width: unset;
+    min-height: unset;
+    height: 52px;
+    border: none;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.16);
+  }
+
+  /* Icon-only circle. The label is a text node set by JS, so it's
+     collapsed with font-size:0 and redrawn as the chevron below. */
+  .m-btn-back {
+    left: 16px;
+    width: 52px;
+    padding: 0;
+    gap: 0;
+    border-radius: 50%;
+    font-size: 0;
+    justify-content: center;
+  }
+  .m-btn-back::before {
+    content: "◀";
+    font-size: 1rem;
+  }
+
+  .m-btn-end {
+    right: 16px;
+    padding: 0 20px;
+    font-size: 1rem;
+    border-radius: 26px;
+  }
+
+  /* ── Sheet: name + kaimyo ── */
+  .m-side-right { justify-content: flex-start; margin-top: 12px; }
+
+  /* DOM order is kaimyo → name; reversing puts the name up as the title
+     with the kaimyo reading beneath it as a subtitle. */
+  .m-name-group {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  /* Vertical Japanese needs height, not width — the phone has the
+     opposite budget, so the same text runs horizontally here. */
+  .lang-ja .m-name,
+  .lang-ja .m-kaimyo,
+  .lang-ja .m-info {
+    writing-mode: horizontal-tb;
+    text-orientation: mixed;
+  }
+
+  .m-name,
+  .m-name.is-long,
+  .m-name.is-xlong {
+    font-size: clamp(1.8rem, 7.5vw, 2.3rem);
+    letter-spacing: 0.06em;
+    text-align: left;
+  }
+
+  .m-kaimyo,
+  .m-kaimyo.is-long,
+  .m-kaimyo.is-xlong {
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    text-align: left;
+  }
+
+  /* ── Sheet: dates + age as pills ── */
+  .m-side-left { justify-content: flex-start; }
+
+  .m-info-group,
+  .lang-ja .m-info-group {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+  .lang-ja .m-info-group > #pAgeBlock { align-self: auto; }
+
+  .m-info {
+    gap: 8px;
+    padding: 10px 18px;
+    background: #f4f2ee;
+    border-radius: 999px;
+  }
+
+  .m-info-label { font-size: 0.85rem; }
+
+  .m-info-value,
+  .m-info-value.is-long,
+  .m-info-value.is-xlong {
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  /* ── Sheet: actions (audio + message + video) ──
+     Audio circle and the message CTA share a row; video drops below. */
+  .m-bottom {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    max-width: 100%;
+    margin-top: 6px;
+    gap: 12px;
+  }
+
+  .m-audio-btn {
+    width: 56px;
+    height: 56px;
+  }
+
+  /* The primary action, styled like the sheet's main CTA. */
+  .m-link {
+    flex: 1;
+    min-width: 0;
+    height: 56px;
+    padding: 0 24px;
+    color: #fff;
+    background: var(--color-accent);
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 6px 18px rgba(58, 125, 68, 0.28);
+  }
+  .m-link:hover,
+  .m-link:active { background: var(--color-accent-dark); }
+
+  .m-video-wrap { flex: 0 0 100%; width: 100%; }
+  .m-video { max-height: 220px; }
+}
+
 /* ── Family selector page ── */
 
 .family-page {
@@ -1518,6 +1870,26 @@ body.has-tenant-bg .f-member-years {
 .f-member-years {
   font-size: clamp(0.75rem, 1.2vw, 1rem);
   color: var(--color-text-muted);
+}
+
+/* ── Mobile family selector ──
+   family.html sets the column count inline from the member count (up to 4
+   across), which is far too tight on a phone — hence !important to win over
+   the inline style. Two columns keeps each name on one line. ── */
+@media (max-width: 560px) {
+  .f-members {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .f-stage {
+    padding: clamp(84px, 20vw, 104px) 18px 40px;
+    gap: 18px;
+  }
+
+  .m-btn-back,
+  .m-btn-end {
+    position: fixed;
+  }
 }
 
 /* ── Photo lightbox (tap photo to view full-screen) ── */

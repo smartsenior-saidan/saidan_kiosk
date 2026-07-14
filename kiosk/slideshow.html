@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" />
-    <link rel="stylesheet" href="css/kiosk.css?v=68" />
+    <link rel="stylesheet" href="css/kiosk.css?v=73" />
     <script src="js/config.js"></script>
     <style>
       /* ── Slideshow nav bar ─────────────────────────────────────────────── */
@@ -70,11 +70,14 @@
         box-shadow: 0 2px 8px rgba(0,0,0,0.07);
       }
 
-      /* Move back button to top-left (profile default is bottom-left) */
-      .slideshow-page .m-btn-back {
-        top: 24px;
-        bottom: auto;
-        left: 32px;
+      /* Move back button to top-left (profile default is bottom-left).
+         Tablet only — on mobile kiosk.css floats it as a circle at 16px. */
+      @media (min-width: 701px) {
+        .slideshow-page .m-btn-back {
+          top: 24px;
+          bottom: auto;
+          left: 32px;
+        }
       }
 
       /* Extra padding so content doesn't hide behind the nav bar */
