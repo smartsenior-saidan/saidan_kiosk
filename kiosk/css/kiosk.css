@@ -1543,7 +1543,19 @@ body.has-tenant-bg .f-member-years {
   .profile-page {
     /* Hero height drives the sheet's top edge too — keep them in sync. */
     --hero-h: clamp(240px, 46vh, 420px);
+    /* How far the sheet is pulled up over the photo's bottom edge. */
     --sheet-lift: 28px;
+  }
+
+  /* …but NOT when a background image is showing. The lift only reads as a card
+     tucked under the photo while the sheet is opaque. Once it's a translucent
+     scrim, that overlapping strip is white-over-photo — and memorial portraits
+     are typically shot on a white studio backdrop, so it renders as a solid
+     white bar wedged between the photo and the background. Landing the sheet
+     exactly on the photo's bottom edge removes the strip; the rounded corners
+     and the shadow still separate the two. */
+  body.has-tenant-bg.profile-page {
+    --sheet-lift: 0px;
   }
 
   /* Stage becomes one scrolling column instead of an absolutely
@@ -1575,19 +1587,22 @@ body.has-tenant-bg .f-member-years {
   }
 
   /* With a tenant or per-person background set, a solid sheet would hide it
-     completely below the hero. Frost it instead so the background reads
-     through the sheet. The alpha is deliberately low (and the blur light) —
-     push either up and the backdrop washes out to plain white; the slight
-     blur is what keeps the name and dates legible over a busy image. */
+     completely below the hero, so thin it to a translucent scrim and let the
+     background read through as the background.
+
+     Deliberately NO backdrop-filter here. Blurring the backdrop smears the
+     bottom edge of the hero photo across the top of the sheet as a hard-edged
+     band, and on iOS a backdrop-filter sampling a position:fixed layer (which
+     is what body::before is) renders as a grey mottled mess rather than the
+     image. A plain alpha keeps the background clean and the dark text legible
+     — the tenant backgrounds are light by design. */
   body.has-tenant-bg .m-stage::before {
-    background: rgba(255, 255, 255, 0.38);
-    backdrop-filter: blur(3px) saturate(1.05);
-    -webkit-backdrop-filter: blur(3px) saturate(1.05);
+    background: rgba(255, 255, 255, 0.5);
   }
 
-  /* Opaque pills would read as solid patches on the frosted sheet. */
+  /* Lift the pills just off the scrim so the dates stay readable on top of it. */
   body.has-tenant-bg .m-info {
-    background: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.6);
   }
 
   /* Hero, then name, then dates, then actions. */
@@ -1876,9 +1891,26 @@ body.has-tenant-bg .f-member-years {
    family.html sets the column count inline from the member count (up to 4
    across), which is far too tight on a phone — hence !important to win over
    the inline style. Two columns keeps each name on one line. ── */
-@media (max-width: 560px) {
+@media (max-width: 700px) {
   .f-members {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* A large family runs past the bottom of the screen, so the page has to
+     scroll. Two things were stopping it:
+
+     1. `.family-page { overflow-y: auto }` above is dead — it's (0,1,0) and
+        loses to `html.kiosk body { overflow: hidden }` at (0,1,2). Matching
+        that specificity is the only way to release the lock.
+     2. `align-items: center` on the same element centers the stage, which
+        pushes the overflow out BOTH ends — and a flex container cannot scroll
+        to content overflowing its start edge. Anchoring to flex-start keeps
+        the whole list reachable. */
+  html.kiosk body.family-page {
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
   }
 
   .f-stage {
