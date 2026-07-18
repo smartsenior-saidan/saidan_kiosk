@@ -72,7 +72,22 @@ if (Test-Path $elecomMsi) {
     Write-Log "Elecom driver package not found, skipping"
 }
 
-# 6. Remove the Intune detection marker.
-Remove-Item -Path "HKLM:\SOFTWARE\SmartSenior\KioskLaunch" -Recurse -Force -ErrorAction SilentlyContinue
+# 6. Uninstall the I-O DATA USB-NFC3 reader driver (same msiexec /x pattern
+# as the Elecom MSI above).
+$nfc3Msi = "$PSScriptRoot\drivers\IODATA_USB-NFC3\Package\ABCDriverInstallerx64.msi"
+if (Test-Path $nfc3Msi) {
+    $nfc3UninstallProc = Start-Process -FilePath "msiexec.exe" -ArgumentList "/x `"$nfc3Msi`" /quiet /norestart" -Wait -PassThru
+    if ($nfc3UninstallProc.ExitCode -ne 0) {
+        Write-Log "WARNING: USB-NFC3 reader driver uninstall exited with code $($nfc3UninstallProc.ExitCode)"
+    } else {
+        Write-Log "USB-NFC3 reader driver uninstalled"
+    }
+} else {
+    Write-Log "USB-NFC3 driver package not found, skipping"
+}
+
+# 7. Remove the Intune detection marker (64-bit view — matches how the install
+# script writes it via reg.exe /reg:64).
+& reg.exe delete "HKLM\SOFTWARE\SmartSenior\KioskLaunch" /f /reg:64 2>$null
 
 Write-Log "Kiosk Launch uninstall complete!"

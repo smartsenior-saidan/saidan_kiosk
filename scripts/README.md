@@ -12,16 +12,18 @@ the scanned URL.
 
 ### Supported NFC readers
 
-Two readers are supported side by side:
+Three readers are supported side by side:
 
 - **ACR122U** — detected by PC/SC name containing `ACR` or `ACS`.
 - **Elecom MR-ICA001BK** (chipset reports as `Circle CIR315 CL 0` over
   PC/SC) — detected by name containing `CIR315`.
+- **I-O DATA USB-NFC3 「ぴタッチ」** (AB Circle CIR215 chipset, same maker
+  as the Elecom's CIR315) — detected by name containing `CIR215`.
 
-Detection logic lives in `_detect_reader()` inside the embedded Python. If a
-new reader model is ever added, find its exact PC/SC name from the
-`Available readers: [...]` line in `reader.log` and add a matching substring
-there.
+Detection logic lives in the `READER_NAMES` tuple above `_detect_reader()`
+inside the embedded Python. If a new reader model is ever added, find its
+exact PC/SC name from the `Available readers: [...]` line in `reader.log`
+and add a matching substring there.
 
 ### Elecom MR-ICA001BK driver
 
@@ -46,6 +48,29 @@ installer (`Package/CIR315DriverInstallerx64.msi`), so it installs silently
 via the standard `msiexec /i ... /quiet /norestart` — no vendor-specific
 flags needed. `kiosk-launch-install.ps1` runs this automatically as one of
 its steps; see that script rather than running the MSI by hand.
+
+### I-O DATA USB-NFC3 「ぴタッチ」 driver
+
+Same situation as the Elecom reader: needs its own driver before PC/SC can
+see it at all (I-O DATA explicitly warns the Windows in-box driver does NOT
+work), and a factory reset wipes it.
+
+Official download page (「USB-NFC3 サポートソフト」):
+`https://www.iodata.jp/lib/software/u/2229.htm`
+Direct file (v1.06, driver 2.1.0.0, 2023-04-26):
+`https://lib.iodata.jp/lib/soft/u/usbnfc3_106.exe`
+
+The download is a self-extracting exe; extracted, it contains
+`Package/ABCDriverInstallerx64.msi` (the "AB Circle CIR215 CCID Driver")
+plus its companion `C2152100.cab` — the x64 pair is committed at
+`drivers/IODATA_USB-NFC3/Package/`. The vendor's own `SetupSilent.bat` just
+runs the installer with `/quiet`, so `kiosk-launch-install.ps1` invokes the
+MSI directly via `msiexec /i ... /quiet /norestart`, identical to the
+Elecom step.
+
+After installing, confirm in Device Manager that it shows up under
+**Smart card readers** as `CIR215` with no warning icon (in Programs and
+Features it appears as "AB Circle CIR215 CCID Driver").
 
 ### QR scanner driver
 
@@ -81,6 +106,12 @@ Check `reader.log` on the tablet:
   failed reads) to help debug new reader chipsets without guessing at
   command bytes.
 - 1.2.0 — added Elecom MR-ICA001BK (`CIR315`) detection alongside ACR122U.
+- 1.3.0 — added I-O DATA USB-NFC3 (`CIR215`) detection; detection substrings
+  moved into a `READER_NAMES` tuple.
+- 1.3.1 — QR loop: re-detect the COM port on every retry (hotplug works
+  without reboot) and suppress repeated identical errors to one line per
+  10 minutes (a kiosk with no QR scanner was logging the same error every
+  3 seconds forever).
 
 ## kiosk-lockdown.ps1 / kiosk-lockdown-undo.ps1
 

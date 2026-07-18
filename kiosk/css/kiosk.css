@@ -1132,12 +1132,18 @@ body.has-tenant-bg .f-member-years {
   text-orientation: mixed;
 }
 
+/* Size hierarchy: the kaimyo (posthumous name) is the primary inscription —
+   as on a traditional 位牌 — so it renders LARGER than the secular name,
+   which sits beside it as the smaller companion text. */
 .m-name {
   font-family: var(--font-primary);
-  font-size: clamp(3rem, 6vw, 5.2rem);
+  /* Sized below even a long (is-long) kaimyo so the hierarchy stays obvious.
+     Tracking is wider than the kaimyo's: at the smaller companion size the
+     em-based spacing shrinks too, so it needs extra to read airily. */
+  font-size: clamp(1.8rem, 3.4vw, 2.8rem);
   font-weight: 600;
   color: #1a1816;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.45em;
   line-height: 1.15;
   margin: 0;
 }
@@ -1151,30 +1157,68 @@ body.has-tenant-bg .f-member-years {
    photo/dates beside it. Set by setFit() in profile.js based on character
    count. */
 .m-name.is-long {
+  font-size: clamp(1.55rem, 2.9vw, 2.4rem);
+  letter-spacing: 0.34em;
+}
+.m-name.is-xlong {
+  font-size: clamp(1.3rem, 2.4vw, 2rem);
+  letter-spacing: 0.22em;
+}
+
+/* A very long kaimyo (10+ chars) shrinks to is-xlong — smaller than a
+   short name's base size, which would invert the hierarchy. Step the name
+   down alongside it so the kaimyo stays the dominant inscription. */
+.m-kaimyo.is-xlong + .m-name {
+  font-size: clamp(1.4rem, 2.5vw, 2.1rem);
+  letter-spacing: 0.34em;
+}
+.m-kaimyo.is-xlong + .m-name.is-long {
+  font-size: clamp(1.25rem, 2.2vw, 1.85rem);
+  letter-spacing: 0.26em;
+}
+.m-kaimyo.is-xlong + .m-name.is-xlong {
+  font-size: clamp(1.1rem, 1.9vw, 1.6rem);
+  letter-spacing: 0.18em;
+}
+
+/* No kaimyo recorded → the name stands alone in the column, so it keeps the
+   full display size instead of the reduced companion size. The hidden kaimyo
+   div stays in the DOM, which is what this adjacent-sibling match keys on. */
+.m-kaimyo.hidden + .m-name {
+  font-size: clamp(3rem, 6vw, 5.2rem);
+  letter-spacing: 0.28em;
+}
+.m-kaimyo.hidden + .m-name.is-long {
   font-size: clamp(2.2rem, 4.6vw, 4rem);
   letter-spacing: 0.2em;
 }
-.m-name.is-xlong {
+.m-kaimyo.hidden + .m-name.is-xlong {
   font-size: clamp(1.7rem, 3.6vw, 3.1rem);
   letter-spacing: 0.14em;
 }
 
+/* Kaimyo sized to match the date/age text on the left (.m-info-value) — same
+   clamp tiers — so the posthumous name and the dates read at one scale.
+   white-space: nowrap keeps it a single unbroken vertical line ("one word")
+   rather than wrapping onto a second column beside the name. */
 .m-kaimyo {
   font-family: var(--font-primary);
-  font-size: clamp(1.4rem, 2.4vw, 2rem);
-  color: var(--color-text-muted);
-  letter-spacing: 0.24em;
+  font-size: clamp(1.7rem, 2.9vw, 2.6rem);
+  color: #1a1816;
+  /* One uniform em value across all size tiers — every character sits at the
+     same even distance, so the name reads as one balanced inscription (the
+     literal-space strip in profile.js removes any uneven word-group gaps). */
+  letter-spacing: 0.2em;
+  line-height: 1.25;
+  white-space: nowrap;
 }
-
-/* Kaimyo (posthumous name) commonly runs longer than the given name, so it
-   gets its own, more generous thresholds — see setFit() in profile.js. */
 .m-kaimyo.is-long {
-  font-size: clamp(1.15rem, 1.9vw, 1.6rem);
-  letter-spacing: 0.16em;
+  font-size: clamp(1.4rem, 2.3vw, 2.1rem);
+  letter-spacing: 0.2em;
 }
 .m-kaimyo.is-xlong {
-  font-size: clamp(0.95rem, 1.5vw, 1.3rem);
-  letter-spacing: 0.1em;
+  font-size: clamp(1.15rem, 1.8vw, 1.7rem);
+  letter-spacing: 0.2em;
 }
 
 /* Kaimyo slides in just before the name */
@@ -1206,14 +1250,16 @@ body.has-tenant-bg .f-member-years {
 }
 
 .m-info-label {
-  font-size: clamp(1rem, 1.5vw, 1.3rem);
+  font-size: clamp(1.2rem, 1.8vw, 1.6rem);
   color: var(--color-text-muted);
   letter-spacing: 0.12em;
 }
 
 .m-info-value {
-  font-size: clamp(1.4rem, 2.4vw, 2.2rem);
-  letter-spacing: 0.1em;
+  font-size: clamp(1.7rem, 2.9vw, 2.6rem);
+  /* Even 0.2em between every character — matches the kaimyo on the right so
+     both side columns read at the same balanced rhythm. */
+  letter-spacing: 0.2em;
   line-height: 1.25;
   color: #1a1816;
 }
@@ -1222,10 +1268,10 @@ body.has-tenant-bg .f-member-years {
    the three date/age columns roughly matched in height — see setFit() in
    profile.js. */
 .m-info-value.is-long {
-  font-size: clamp(1.15rem, 1.9vw, 1.8rem);
+  font-size: clamp(1.4rem, 2.3vw, 2.1rem);
 }
 .m-info-value.is-xlong {
-  font-size: clamp(0.95rem, 1.5vw, 1.4rem);
+  font-size: clamp(1.15rem, 1.8vw, 1.7rem);
 }
 
 .m-info-highlight {
@@ -1787,9 +1833,19 @@ body.has-tenant-bg .f-member-years {
     text-orientation: mixed;
   }
 
+  /* The `.m-kaimyo.hidden + .m-name` (no kaimyo → name stays large) and
+     `.m-kaimyo.is-xlong + .m-name` (long kaimyo → name steps down) selectors
+     carry higher specificity than plain .m-name, so they must be repeated
+     here or those kiosk sizes leak into the phone sheet. */
   .m-name,
   .m-name.is-long,
-  .m-name.is-xlong {
+  .m-name.is-xlong,
+  .m-kaimyo.hidden + .m-name,
+  .m-kaimyo.hidden + .m-name.is-long,
+  .m-kaimyo.hidden + .m-name.is-xlong,
+  .m-kaimyo.is-xlong + .m-name,
+  .m-kaimyo.is-xlong + .m-name.is-long,
+  .m-kaimyo.is-xlong + .m-name.is-xlong {
     font-size: clamp(1.8rem, 7.5vw, 2.3rem);
     letter-spacing: 0.06em;
     text-align: left;
@@ -1801,6 +1857,9 @@ body.has-tenant-bg .f-member-years {
     font-size: 1rem;
     letter-spacing: 0.08em;
     text-align: left;
+    /* Undo the kiosk's nowrap: on the narrow sheet a long kaimyo should wrap
+       instead of running off the edge. */
+    white-space: normal;
   }
 
   /* ── Sheet: dates + age as pills ── */
@@ -1830,6 +1889,9 @@ body.has-tenant-bg .f-member-years {
   .m-info-value.is-xlong {
     font-size: 1.05rem;
     font-weight: 600;
+    /* Keep the phone pills compact — the kiosk's wider 0.2em would bloat them
+       and force wrapping. */
+    letter-spacing: 0.02em;
   }
 
   /* ── Sheet: actions (audio + message + video) ──

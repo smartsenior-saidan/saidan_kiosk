@@ -20,13 +20,28 @@ function Write-Log {
     $line | Out-File -FilePath $logFile -Append -Encoding UTF8
 }
 
+# Log the full details of any terminating error — with the exact line it came
+# from — before it propagates. Without this, a failure under Intune's SYSTEM
+# context leaves nothing in the log but a silent stop, making it impossible to
+# tell which step died. `break` re-throws so the caller still sees the failure.
+trap {
+    Write-Log "FATAL: $($_.Exception.Message)"
+    Write-Log "  at $($_.InvocationInfo.PositionMessage -replace '\s+', ' ')"
+    if ($_.ScriptStackTrace) { Write-Log "  stack: $($_.ScriptStackTrace -replace '\s+', ' ')" }
+    break
+}
+
 Write-Log "Starting NFC Reader setup..."
 
-# 1. Stop any existing reader
+# 1. Stop any existing reader. Use Get-Process, NOT Get-CimInstance Win32_Process:
+# the WMI process query can hang for minutes under SYSTEM while Windows is busy
+# with PnP/driver activity — which is exactly the state right after this script's
+# caller installs the three reader drivers, and it stalled the whole Intune
+# deployment here. On a kiosk the only pythonw is our reader, so stopping every
+# pythonw is safe and, unlike the WMI query, cannot hang.
 Stop-ScheduledTask -TaskName "SmartSenior-NFCReader" -ErrorAction SilentlyContinue
-Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" -ErrorAction SilentlyContinue |
-    Where-Object { $_.CommandLine -like "*kiosk_reader*" } |
-    ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Get-Process -Name pythonw -ErrorAction SilentlyContinue |
+    Stop-Process -Force -ErrorAction SilentlyContinue
 
 # 2. Create install folder
 if (-not (Test-Path $nfcDir)) {
@@ -45,7 +60,7 @@ from smartcard.System import readers
 import ndef
 from pynput import keyboard
 
-__version__ = "1.2.0"
+__version__ = "1.3.1"
 
 DEBUG_PORT        = "9222"
 CONFIG_PATH       = Path(r"C:\ProgramData\SmartSenior\config.json")
@@ -149,11 +164,17 @@ def _tab_guard_loop():
         time.sleep(3)
         _close_extra_tabs()
 
+# Known PC/SC name fragments, one per supported model:
+#   ACR / ACS  - ACR122U
+#   CIR315     - Elecom MR-ICA001BK (AB Circle CIR315 chipset)
+#   CIR215     - I-O DATA USB-NFC3 "PiTouch" (AB Circle CIR215 chipset)
+READER_NAMES = ("ACR", "ACS", "CIR315", "CIR215")
+
 def _detect_reader():
     try:
         rdrs = readers()
         for r in rdrs:
-            if "ACR" in str(r) or "ACS" in str(r) or "CIR315" in str(r):
+            if any(name in str(r) for name in READER_NAMES):
                 log(f"NFC reader: {r}")
                 return r
         log(f"No supported NFC reader found. Available readers: {[str(r) for r in rdrs]}")
@@ -251,12 +272,18 @@ def _find_qr_port():
     return QR_COM_FALLBACK
 
 def run_qr_loop():
-    port = _find_qr_port()
-    log(f"QR scanner: {port}")
+    # Re-detect the port on every retry so a scanner plugged in after boot
+    # (or assigned a new COM number) is picked up without a reboot. Repeat
+    # failures log once per 10 minutes, not every retry — a kiosk with no QR
+    # scanner attached would otherwise fill reader.log with the same error
+    # every 3 seconds forever.
+    last_err, last_err_time = None, 0.0
     while True:
+        port = _find_qr_port()
         try:
             with serial.Serial(port, QR_BAUD_RATE, timeout=1) as ser:
                 log(f"QR serial open on {port}")
+                last_err = None
                 while True:
                     line = ser.readline().decode("utf-8", errors="ignore").strip()
                     if not line:
@@ -265,7 +292,11 @@ def run_qr_loop():
                         log(f"QR scanned: {line}")
                         navigate(line)
         except Exception as e:
-            log_err(f"QR serial error: {e}"); time.sleep(3)
+            msg = f"QR serial error: {e}"
+            if msg != last_err or time.time() - last_err_time > 600:
+                log_err(f"{msg} (no QR scanner on {port}? retrying quietly)")
+                last_err, last_err_time = msg, time.time()
+            time.sleep(3)
 
 def _exit():
     log("Exit hotkey pressed"); os._exit(0)
@@ -298,6 +329,11 @@ Write-Log "kiosk_reader.py written"
 
 # 4. Install Python 3.11 system-wide
 if (-not (Test-Path $pythonExe)) {
+    # Invoke-WebRequest renders a download progress bar that makes it 10-50x
+    # slower under SYSTEM/non-interactive contexts — a ~30-second download
+    # crawled for 27 minutes here, stalling the whole Intune install.
+    # Silencing the progress stream makes it fast and non-blocking.
+    $ProgressPreference = 'SilentlyContinue'
     Write-Log "Downloading Python 3.11..."
     Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe" `
         -OutFile "$env:TEMP\python311.exe" -UseBasicParsing

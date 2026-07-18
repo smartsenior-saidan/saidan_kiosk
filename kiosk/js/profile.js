@@ -238,8 +238,10 @@ function renderPerson(person, media) {
   document.title = `${displayName.replace('　', ' ')} — SmartSenior`;
   setFit('pName', displayName, { longAt: 4, xlongAt: 6 });
 
-  // Posthumous Buddhist name (戒名), if recorded
-  const kaimyo = person.kaimyo || person.posthumous_name || '';
+  // Posthumous Buddhist name (戒名), if recorded. Strip any spaces (ASCII or
+  // full-width 　) so it renders as one continuous name, never broken into
+  // separately-spaced word groups.
+  const kaimyo = (person.kaimyo || person.posthumous_name || '').replace(/[\s　]+/g, '');
   if (kaimyo) { setFit('pKaimyo', kaimyo, { longAt: 6, xlongAt: 10 }); show('pKaimyo'); }
 
   // Top controls
