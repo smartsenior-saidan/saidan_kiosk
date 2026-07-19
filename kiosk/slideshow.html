@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" />
-    <link rel="stylesheet" href="css/kiosk.css?v=88" />
+    <link rel="stylesheet" href="css/kiosk.css?v=95" />
     <script src="js/config.js"></script>
     <style>
       /* ── Slideshow nav bar ─────────────────────────────────────────────── */
@@ -304,14 +304,17 @@
         const name = `${person.last_name || ''}${person.first_name || ''}`.trim();
         setFit('pName', name, { longAt: 4, xlongAt: 6 });
 
-        // Kaimyo
-        const kaimyo = person.kaimyo || person.posthumous_name || '';
-        if (kaimyo) { setFit('pKaimyo', kaimyo, { longAt: 6, xlongAt: 10 }); show('pKaimyo'); }
-        else hide('pKaimyo');
+        // Kaimyo — strip spaces (ASCII or full-width 　) so it renders as one
+        // continuous name, matching profile.js's rendering exactly.
+        const kaimyo = (person.kaimyo || person.posthumous_name || '').replace(/[\s　]+/g, '');
+        if (kaimyo) show('pKaimyo'); else hide('pKaimyo');
 
-        // Birth date / death date / age — sized together via setGroupFit so
-        // all three share one font size regardless of which is longest.
+        // Kaimyo + birth date / death date / age — sized together via
+        // setGroupFit so ALL FOUR share one font size (and therefore one
+        // identical em-based letter-spacing in px), matching profile.js.
         const infoEntries = [];
+
+        if (kaimyo) infoEntries.push({ id: 'pKaimyo', text: kaimyo });
 
         if (person.birth_date) {
           set('pBirthLabel', '生誕');

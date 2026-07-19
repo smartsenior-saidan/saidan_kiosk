@@ -1023,7 +1023,11 @@ body.has-tenant-bg .f-member-years {
   flex-direction: row-reverse; /* right column (name) first visually */
   align-items: center;
   justify-content: center;
-  gap: clamp(14px, 2.4vw, 40px);
+  /* Gap between the photo and BOTH side columns. A single value here means the
+     photo→name (right) and photo→dates (left) gaps are always identical, and
+     it's set larger than the columns' internal gaps to give the photo room to
+     breathe. */
+  gap: clamp(32px, 3.8vw, 64px);
   /* Top padding only needs to clear the back/end buttons (~80px tall) —
      it was far larger than the bottom padding before, which pushed the
      centered photo/text visibly below true screen-center. Kept slightly
@@ -1127,26 +1131,33 @@ body.has-tenant-bg .f-member-years {
   align-self: center;
 }
 
-.lang-ja .m-name,
-.lang-ja .m-kaimyo {
+.lang-ja .m-name {
   writing-mode: vertical-rl;
   text-orientation: upright;
 }
 
+/* Kaimyo shares the dates' orientation (mixed), not the name's (upright):
+   upright packs characters using the font's tighter vertical metrics, which
+   read as cramped, so the kaimyo looked denser than the left-side dates even
+   at the same font-size + letter-spacing. Mixed makes the two columns'
+   vertical rhythm identical. */
+.lang-ja .m-kaimyo,
 .lang-ja .m-info {
   writing-mode: vertical-rl;
   text-orientation: mixed;
 }
 
-/* Size hierarchy: the kaimyo (posthumous name) is the primary inscription —
-   as on a traditional 位牌 — so it renders LARGER than the secular name,
-   which sits beside it as the smaller companion text. */
+/* FIXED sizing — every profile renders the name, kaimyo, and dates at the
+   exact same size and position; only the background changes between people.
+   The old is-long/is-xlong tiers shrank text by content length, which made
+   a person with a longer date or kaimyo render smaller and reflow the whole
+   composition. Those tiers are intentionally gone: the name is one size, the
+   kaimyo/dates are one (smaller) size, on every profile. The size is chosen
+   to fit the longest realistic content (≈13-char era date, ≈10-char kaimyo)
+   without overflowing its vertical column. */
 .m-name {
   font-family: var(--font-primary);
-  /* Sized below even a long (is-long) kaimyo so the hierarchy stays obvious.
-     Tracking is wider than the kaimyo's: at the smaller companion size the
-     em-based spacing shrinks too, so it needs extra to read airily. */
-  font-size: clamp(1.8rem, 3.4vw, 2.8rem);
+  font-size: clamp(2.1rem, 3.6vw, 2.95rem);
   font-weight: 600;
   color: #1a1816;
   letter-spacing: 0.45em;
@@ -1159,72 +1170,28 @@ body.has-tenant-bg .f-member-years {
   animation: m-name-ja 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
 }
 
-/* A long name shrinks to fit its column instead of growing taller than the
-   photo/dates beside it. Set by setFit() in profile.js based on character
-   count. */
-.m-name.is-long {
-  font-size: clamp(1.55rem, 2.9vw, 2.4rem);
-  letter-spacing: 0.34em;
-}
-.m-name.is-xlong {
-  font-size: clamp(1.3rem, 2.4vw, 2rem);
-  letter-spacing: 0.22em;
-}
-
-/* A very long kaimyo (10+ chars) shrinks to is-xlong — smaller than a
-   short name's base size, which would invert the hierarchy. Step the name
-   down alongside it so the kaimyo stays the dominant inscription. */
-.m-kaimyo.is-xlong + .m-name {
-  font-size: clamp(1.4rem, 2.5vw, 2.1rem);
-  letter-spacing: 0.34em;
-}
-.m-kaimyo.is-xlong + .m-name.is-long {
-  font-size: clamp(1.25rem, 2.2vw, 1.85rem);
-  letter-spacing: 0.26em;
-}
-.m-kaimyo.is-xlong + .m-name.is-xlong {
-  font-size: clamp(1.1rem, 1.9vw, 1.6rem);
-  letter-spacing: 0.18em;
-}
-
-/* No kaimyo recorded → the name stands alone in the column, so it keeps the
-   full display size instead of the reduced companion size. The hidden kaimyo
-   div stays in the DOM, which is what this adjacent-sibling match keys on. */
+/* No kaimyo recorded → the kaimyo div collapses (display:none) and its slot
+   in the name-group's gap collapses with it, so the name would otherwise sit
+   flush against the photo. Re-add that spacing directly on the name so the
+   distance to the photo stays consistent whether or not a kaimyo is shown. */
 .m-kaimyo.hidden + .m-name {
-  font-size: clamp(3rem, 6vw, 5.2rem);
-  letter-spacing: 0.28em;
-}
-.m-kaimyo.hidden + .m-name.is-long {
-  font-size: clamp(2.2rem, 4.6vw, 4rem);
-  letter-spacing: 0.2em;
-}
-.m-kaimyo.hidden + .m-name.is-xlong {
-  font-size: clamp(1.7rem, 3.6vw, 3.1rem);
-  letter-spacing: 0.14em;
+  margin-left: clamp(18px, 2.5vw, 40px);
 }
 
-/* Kaimyo sized to match the date/age text on the left (.m-info-value) — same
-   clamp tiers — so the posthumous name and the dates read at one scale.
-   white-space: nowrap keeps it a single unbroken vertical line ("one word")
-   rather than wrapping onto a second column beside the name. */
+/* Kaimyo — one fixed size, identical to the date/age text (.m-info-value) so
+   the posthumous name and the dates read at exactly one scale on every
+   profile. white-space: nowrap keeps it a single unbroken vertical line. */
 .m-kaimyo {
   font-family: var(--font-primary);
-  font-size: clamp(1.7rem, 2.9vw, 2.6rem);
+  font-size: clamp(1.6rem, 2.65vw, 2.3rem);
   color: #1a1816;
-  /* One uniform em value across all size tiers — every character sits at the
-     same even distance, so the name reads as one balanced inscription (the
-     literal-space strip in profile.js removes any uneven word-group gaps). */
-  letter-spacing: 0.2em;
+  /* Uniform vertical spacing between characters — kept identical to
+     .m-info-value (the left-side dates) so the two columns read at the same
+     open rhythm. Opened up from 0.2em because next to the very airy name
+     (0.45em) the kaimyo looked cramped. */
+  letter-spacing: 0.32em;
   line-height: 1.25;
   white-space: nowrap;
-}
-.m-kaimyo.is-long {
-  font-size: clamp(1.4rem, 2.3vw, 2.1rem);
-  letter-spacing: 0.2em;
-}
-.m-kaimyo.is-xlong {
-  font-size: clamp(1.15rem, 1.8vw, 1.7rem);
-  letter-spacing: 0.2em;
 }
 
 /* Kaimyo slides in just before the name */
@@ -1261,23 +1228,16 @@ body.has-tenant-bg .f-member-years {
   letter-spacing: 0.12em;
 }
 
+/* One fixed size, identical to .m-kaimyo — the left dates/age and the
+   right-hand kaimyo read at exactly the same scale on every profile,
+   regardless of how long any individual date is. */
 .m-info-value {
-  font-size: clamp(1.7rem, 2.9vw, 2.6rem);
-  /* Even 0.2em between every character — matches the kaimyo on the right so
-     both side columns read at the same balanced rhythm. */
-  letter-spacing: 0.2em;
+  font-size: clamp(1.6rem, 2.65vw, 2.3rem);
+  /* Matches the kaimyo on the right (same 0.32em) so both side columns read
+     at the exact same open vertical rhythm. */
+  letter-spacing: 0.32em;
   line-height: 1.25;
   color: #1a1816;
-}
-
-/* An era date longer than usual (e.g. an older era name) shrinks to keep
-   the three date/age columns roughly matched in height — see setFit() in
-   profile.js. */
-.m-info-value.is-long {
-  font-size: clamp(1.4rem, 2.3vw, 2.1rem);
-}
-.m-info-value.is-xlong {
-  font-size: clamp(1.15rem, 1.8vw, 1.7rem);
 }
 
 .m-info-highlight {
@@ -1855,6 +1815,14 @@ body.has-tenant-bg .f-member-years {
     font-size: clamp(1.8rem, 7.5vw, 2.3rem);
     letter-spacing: 0.06em;
     text-align: left;
+  }
+
+  /* The kiosk's photo-gap margin-left on .m-kaimyo.hidden + .m-name only
+     makes sense beside the photo; here the group stacks vertically
+     (column-reverse), so undo it or the name sits indented from the kaimyo
+     subtitle beneath it. */
+  .m-kaimyo.hidden + .m-name {
+    margin-left: 0;
   }
 
   .m-kaimyo,

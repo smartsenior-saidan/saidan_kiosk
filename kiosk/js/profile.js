@@ -242,14 +242,20 @@ function renderPerson(person, media) {
   // full-width 　) so it renders as one continuous name, never broken into
   // separately-spaced word groups.
   const kaimyo = (person.kaimyo || person.posthumous_name || '').replace(/[\s　]+/g, '');
-  if (kaimyo) { setFit('pKaimyo', kaimyo, { longAt: 6, xlongAt: 10 }); show('pKaimyo'); }
+  if (kaimyo) show('pKaimyo');
 
   // Top controls
   wireNav();
 
-  // Birth date / death date / age — sized together via setGroupFit so all
-  // three share one font size regardless of which value is longest.
+  // Kaimyo + birth date / death date / age — sized together via setGroupFit
+  // so ALL FOUR share one font size (and therefore one identical em-based
+  // letter-spacing in px) regardless of which value is longest. Kaimyo used
+  // to get its own dedicated setFit() call with different thresholds, which
+  // let it land in a different size tier than the dates column even though
+  // both sides use the same clamp()/letter-spacing values per tier.
   const infoEntries = [];
+
+  if (kaimyo) infoEntries.push({ id: 'pKaimyo', text: kaimyo });
 
   if (person.birth_date) {
     set('pBirthLabel', '生誕');
