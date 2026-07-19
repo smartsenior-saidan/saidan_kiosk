@@ -28,7 +28,7 @@ import {
   personMediaCollection,
   personMediaDoc,
 } from "./firebase.js?v=3";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=18";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=19";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -77,11 +77,22 @@ function matchesNameQuery(person, rawQuery) {
   }
   return false;
 }
+
+// Matches a person against a query on their posthumous name (kaimyo). Kept
+// separate from matchesNameQuery so it can be opted into only where wanted
+// (the family-link picker), not applied to every name search.
+function matchesKaimyoQuery(person, rawQuery) {
+  const q = (rawQuery || "").trim().toLowerCase();
+  if (!q) return false;
+  const kaimyo = (person.kaimyo || person.posthumous_name || "").toLowerCase();
+  return !!kaimyo && kaimyo.includes(q);
+}
 let dashboardPersons = [];  // cached for the family/individual panel search
 let currentSection = "dashboard";
 let sortField = "last_name"; // last_name | first_name | death_date | created_at
 let sortDir   = "asc";       // asc | desc
-let selectedRelated = [];   // array of { id, first_name, last_name }
+let selectedRelated = [];   // array of { id, first_name, last_name, kaimyo }
+let familyBuilder = [];     // "New Family" tab: { id, first_name, last_name, kaimyo }
 
 // ── Section navigation ───────────────────────────────────────────────────────
 
@@ -612,7 +623,10 @@ function renderFamilySelected() {
   if (!list) return;
   list.innerHTML = selectedRelated.map((p) => `
     <li class="family-tag">
-      <span>${esc(p.first_name)} ${esc(p.last_name)}</span>
+      <span class="family-tag-text">
+        <span class="family-tag-name">${esc(p.first_name)} ${esc(p.last_name)}</span>
+        ${p.kaimyo ? `<span class="family-tag-kaimyo">${esc(p.kaimyo)}</span>` : ""}
+      </span>
       <button type="button" class="family-tag-remove" data-id="${p.id}" aria-label="Remove">✕</button>
     </li>`).join("");
   list.querySelectorAll(".family-tag-remove").forEach((btn) => {
@@ -633,7 +647,7 @@ function initFamilyPicker() {
   function pick(id) {
     const p = allProfiles.find((x) => x.id === id);
     if (p && !selectedRelated.find((r) => r.id === p.id)) {
-      selectedRelated.push({ id: p.id, first_name: p.first_name, last_name: p.last_name });
+      selectedRelated.push({ id: p.id, first_name: p.first_name, last_name: p.last_name, kaimyo: p.kaimyo || p.posthumous_name || "" });
       renderFamilySelected();
     }
     input.value = "";
@@ -652,20 +666,27 @@ function initFamilyPicker() {
     activeIndex = -1;
     if (!q) { suggestions.classList.add("hidden"); return; }
 
+    // Also match on the posthumous name (kaimyo) — two people can share the
+    // same first + last name, and the kaimyo is what tells them apart when
+    // linking a family, so it's searchable here too.
     const matches = allProfiles.filter((p) => {
       if (p.id === editingPersonId) return false;
       if (selectedRelated.find((r) => r.id === p.id)) return false;
-      return matchesNameQuery(p, q);
+      return matchesNameQuery(p, q) || matchesKaimyoQuery(p, q);
     }).slice(0, 6);
 
     if (!matches.length) { suggestions.classList.add("hidden"); return; }
 
     suggestions.innerHTML = matches.map((p) => {
       const initials = ((p.last_name || "").charAt(0) + (p.first_name || "").charAt(0)) || "✦";
+      const kaimyo = p.kaimyo || p.posthumous_name || "";
       return `
       <li class="family-suggestion-item" data-id="${p.id}">
         <span class="suggestion-avatar">${esc(initials)}</span>
-        <span>${esc(p.first_name)} ${esc(p.last_name)}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}</span>
+        <span class="suggestion-body">
+          <span class="suggestion-name">${esc(p.first_name)} ${esc(p.last_name)}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}</span>
+          ${kaimyo ? `<span class="suggestion-kaimyo">${esc(kaimyo)}</span>` : ""}
+        </span>
       </li>`;
     }).join("");
     suggestions.classList.remove("hidden");
@@ -706,6 +727,158 @@ function initFamilyPicker() {
       suggestions.classList.add("hidden");
     }
   });
+}
+
+// ── "New Family" tab — group existing profiles into one family ────────────────
+// A "family" is just a set of profiles that all reference each other via
+// related_persons (a clique). This tab lets an admin build that set directly —
+// searching existing profiles and adding them — instead of opening each profile
+// and linking one-by-one. Adding someone who's already in a family pulls their
+// whole family in too, so an individual can be dropped straight into an
+// existing family (or two families merged). Saving is purely additive: it only
+// adds the mutual links, never removes any existing one.
+
+function renderFamilyBuilder() {
+  const list = document.getElementById("nfSelected");
+  const saveBtn = document.getElementById("nfSaveBtn");
+  if (!list) return;
+  list.innerHTML = familyBuilder.map((p) => `
+    <li class="family-tag">
+      <span class="family-tag-text">
+        <span class="family-tag-name">${esc(p.first_name)} ${esc(p.last_name)}</span>
+        ${p.kaimyo ? `<span class="family-tag-kaimyo">${esc(p.kaimyo)}</span>` : ""}
+      </span>
+      <button type="button" class="family-tag-remove" data-id="${p.id}" aria-label="Remove">✕</button>
+    </li>`).join("");
+  list.querySelectorAll(".family-tag-remove").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      familyBuilder = familyBuilder.filter((p) => p.id !== btn.dataset.id);
+      renderFamilyBuilder();
+    });
+  });
+  if (saveBtn) saveBtn.disabled = familyBuilder.length < 2;
+}
+
+function addToFamilyBuilder(id) {
+  const p = allProfiles.find((x) => x.id === id);
+  if (!p) return;
+  const push = (person) => {
+    if (person && !familyBuilder.find((r) => r.id === person.id)) {
+      familyBuilder.push({
+        id: person.id, first_name: person.first_name,
+        last_name: person.last_name, kaimyo: person.kaimyo || person.posthumous_name || "",
+      });
+      return true;
+    }
+    return false;
+  };
+  push(p);
+  // Pull in the person's existing family so moving someone into a family (or
+  // merging two families) links the whole group, not just this one person.
+  let pulled = 0;
+  for (const rid of (p.related_persons || [])) {
+    if (push(allProfiles.find((x) => x.id === rid))) pulled++;
+  }
+  renderFamilyBuilder();
+  if (pulled) {
+    const name = `${p.last_name || ""}${p.first_name || ""}`.trim() || "—";
+    setStatus(t("nf.pulledIn", { name, n: pulled }), "info");
+  }
+}
+
+function initFamilyBuilder() {
+  const input = document.getElementById("nfSearch");
+  const suggestions = document.getElementById("nfSuggestions");
+  const saveBtn = document.getElementById("nfSaveBtn");
+  if (!input || !suggestions) return;
+
+  input.addEventListener("input", () => {
+    const q = input.value.toLowerCase().trim();
+    if (!q) { suggestions.classList.add("hidden"); return; }
+
+    const matches = allProfiles.filter((p) => {
+      if (familyBuilder.find((r) => r.id === p.id)) return false;
+      return matchesNameQuery(p, q) || matchesKaimyoQuery(p, q);
+    }).slice(0, 6);
+
+    if (!matches.length) { suggestions.classList.add("hidden"); return; }
+
+    suggestions.innerHTML = matches.map((p) => {
+      const initials = ((p.last_name || "").charAt(0) + (p.first_name || "").charAt(0)) || "✦";
+      const kaimyo = p.kaimyo || p.posthumous_name || "";
+      const inFamily = (p.related_persons || []).length
+        ? `<span class="suggestion-fam">${esc(p.last_name || "")}家</span>` : "";
+      return `
+      <li class="family-suggestion-item" data-id="${p.id}">
+        <span class="suggestion-avatar">${esc(initials)}</span>
+        <span class="suggestion-body">
+          <span class="suggestion-name">${esc(p.first_name)} ${esc(p.last_name)}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}${inFamily}</span>
+          ${kaimyo ? `<span class="suggestion-kaimyo">${esc(kaimyo)}</span>` : ""}
+        </span>
+      </li>`;
+    }).join("");
+    suggestions.classList.remove("hidden");
+
+    suggestions.querySelectorAll(".family-suggestion-item").forEach((item) => {
+      item.addEventListener("click", () => {
+        addToFamilyBuilder(item.dataset.id);
+        input.value = "";
+        suggestions.classList.add("hidden");
+        input.focus();
+      });
+    });
+  });
+
+  // Enter here must never bubble anywhere that would navigate away.
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") e.preventDefault(); });
+
+  document.addEventListener("click", (e) => {
+    if (!input.contains(e.target) && !suggestions.contains(e.target)) {
+      suggestions.classList.add("hidden");
+    }
+  });
+
+  saveBtn?.addEventListener("click", saveFamilyBuilder);
+  renderFamilyBuilder();
+}
+
+async function saveFamilyBuilder() {
+  if (familyBuilder.length < 2) { setStatus(t("nf.needTwo"), "error"); return; }
+  const saveBtn = document.getElementById("nfSaveBtn");
+  const ids = familyBuilder.map((p) => p.id);
+  if (saveBtn) saveBtn.disabled = true;
+  setStatus(t("nf.saving"), "info");
+
+  try {
+    // Additive clique: every member's related_persons becomes the union of what
+    // it already had and every other member here. Never removes a link.
+    for (const id of ids) {
+      const others = ids.filter((x) => x !== id);
+      const snap = await getDoc(doc(db, COLLECTIONS.persons, id));
+      const existing = snap.exists() ? (snap.data().related_persons || []) : [];
+      const merged = [...new Set([...existing, ...others])];
+      if (merged.length !== existing.length) {
+        await updateDoc(doc(db, COLLECTIONS.persons, id), {
+          related_persons: merged,
+          updated_at: serverTimestamp(),
+        });
+      }
+    }
+
+    // Refresh caches so the new links show everywhere (dashboard, pickers).
+    const snap = await getDocs(tenantQuery(COLLECTIONS.persons));
+    allProfiles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    dashboardPersons = allProfiles;
+
+    const count = ids.length;
+    familyBuilder = [];
+    renderFamilyBuilder();
+    setStatus(t("nf.created", { n: count }), "success");
+  } catch (err) {
+    console.error("[admin] create family failed:", err);
+    setStatus(t("nf.createFailed", { msg: err.message || err }), "error");
+    if (saveBtn) saveBtn.disabled = familyBuilder.length < 2;
+  }
 }
 
 async function handleSave(e) {
@@ -860,7 +1033,7 @@ async function loadForEdit(person) {
   selectedRelated = (person.related_persons || [])
     .map((id) => allProfiles.find((p) => p.id === id))
     .filter(Boolean)
-    .map((p) => ({ id: p.id, first_name: p.first_name, last_name: p.last_name }));
+    .map((p) => ({ id: p.id, first_name: p.first_name, last_name: p.last_name, kaimyo: p.kaimyo || p.posthumous_name || "" }));
   renderFamilySelected();
 
   // Reset media state
@@ -1337,6 +1510,7 @@ export function initAdminPortal() {
     allProfiles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   }).catch(() => {});
   initFamilyPicker();
+  initFamilyBuilder();
 
   // Load initial section — land on New Profile rather than the dashboard.
   showSection("new-profile");

@@ -18,7 +18,11 @@
       "Bash(python3 -c ' *)",
       "Bash(pip3 install *)",
       "Bash(npx --no-install playwright screenshot --viewport-size=390,844 --block-service-workers --wait-for-timeout=2200 \"http://localhost:8765/__test_bg.html\" bg2_profile_390x844.png)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(node --check js/admin.js)",
+      "Bash(node --check js/i18n.js)",
+      "Bash(sed -i '' 's#i18n.js?v=18#i18n.js?v=19#' js/admin.js)",
+      "Bash(sed -i '' 's#admin.js?v=29#admin.js?v=30#' index.html)"
     ]
   }
 }
