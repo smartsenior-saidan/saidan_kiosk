@@ -33,6 +33,21 @@ if (Test-Path $lockdownPath) {
 
 Write-Log "Edge-swipe gesture re-enabled (reboot required to take effect)"
 
+# 1b. Re-enable the Widgets board (reverses the AllowNewsAndInterests/EnableFeeds
+# policies set by kiosk-lockdown.ps1 section 1b). Removing the values restores the
+# Windows default (Widgets enabled) rather than forcing it on.
+$dshPath = "HKLM:\SOFTWARE\Policies\Microsoft\Dsh"
+if (Test-Path $dshPath) {
+    Remove-ItemProperty -Path $dshPath -Name "AllowNewsAndInterests" -Force -ErrorAction SilentlyContinue
+}
+
+$feedsPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds"
+if (Test-Path $feedsPath) {
+    Remove-ItemProperty -Path $feedsPath -Name "EnableFeeds" -Force -ErrorAction SilentlyContinue
+}
+
+Write-Log "Widgets board re-enabled (reboot required to take effect)"
+
 # 2. Restore the power/sleep buttons to their normal "Sleep" action.
 powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 1
 powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 1

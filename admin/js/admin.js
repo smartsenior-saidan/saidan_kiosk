@@ -28,7 +28,7 @@ import {
   personMediaCollection,
   personMediaDoc,
 } from "./firebase.js?v=3";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=19";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=20";
 
 // ── State ───────────────────────────────────────────────────────────────────
 

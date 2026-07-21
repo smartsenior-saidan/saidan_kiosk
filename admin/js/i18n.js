@@ -277,7 +277,9 @@ const STRINGS = {
   },
 };
 
-let _lang = localStorage.getItem("admin_lang") || "en";
+// Default to Japanese on first landing (no saved preference yet); a returning
+// user's explicit EN/日本語 choice is remembered in localStorage and wins.
+let _lang = localStorage.getItem("admin_lang") || "ja";
 const _listeners = [];
 
 export function getLang() {

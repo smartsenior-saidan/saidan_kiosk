@@ -39,6 +39,26 @@ New-ItemProperty -Path $lockdownPath -Name "AllowEdgeSwipe" -Value 0 -PropertyTy
 
 Write-Log "Edge-swipe gesture disabled (reboot required to take effect)"
 
+# 1b. Disable the Widgets board. On Windows 11, swiping in from the LEFT screen
+# edge opens the Widgets/news-and-interests board, which AllowEdgeSwipe above does
+# NOT govern — it's a separate feature with its own policy. Turning the feature off
+# removes the left-edge swipe target entirely. AllowNewsAndInterests is the current
+# (Win11 22H2+) machine policy; EnableFeeds is the legacy key, set too as a harmless
+# belt-and-suspenders for older builds.
+$dshPath = "HKLM:\SOFTWARE\Policies\Microsoft\Dsh"
+if (-not (Test-Path $dshPath)) {
+    New-Item -Path $dshPath -Force | Out-Null
+}
+New-ItemProperty -Path $dshPath -Name "AllowNewsAndInterests" -Value 0 -PropertyType DWord -Force | Out-Null
+
+$feedsPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds"
+if (-not (Test-Path $feedsPath)) {
+    New-Item -Path $feedsPath -Force | Out-Null
+}
+New-ItemProperty -Path $feedsPath -Name "EnableFeeds" -Value 0 -PropertyType DWord -Force | Out-Null
+
+Write-Log "Widgets board disabled (removes the left-edge swipe target; reboot required)"
+
 # 2. Let the power/sleep button sleep the tablet normally, but skip the
 # password/lock-screen prompt on wake. Pressing the power button puts the
 # tablet to sleep as usual; CONSOLELOCK=0 means waking it (power button or

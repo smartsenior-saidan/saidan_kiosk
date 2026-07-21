@@ -125,9 +125,19 @@ try {
     if ($homeUrl) {
         try {
             $edgePath = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-            # --remote-debugging-port lets the NFC/QR reader navigate the existing window
-            # instead of opening a new one on every tap/scan (same convention as before).
-            $edgeArgs = "--remote-debugging-port=9222 --remote-allow-origins=http://127.0.0.1:9222 --user-data-dir=`"C:\EdgeKiosk`" --start-fullscreen `"$homeUrl`""
+            # True Edge kiosk mode, NOT --start-fullscreen. --start-fullscreen is only
+            # F11-style fullscreen: Edge still reveals its toolbar/address bar when you
+            # touch the top edge, exposing the URL. --kiosk with
+            # --edge-kiosk-type=fullscreen is a locked single-tab fullscreen with no
+            # toolbar reveal at all. --kiosk-idle-timeout-minutes=0 stops Edge from
+            # auto-resetting on idle — the NFC/QR daemon owns navigation (including
+            # return-to-home on card removal).
+            #
+            # --remote-debugging-port stays: it lets the NFC/QR reader navigate the
+            # existing window instead of opening a new one on every tap/scan. The
+            # debug endpoint (/json) is still exposed under kiosk mode, so the daemon
+            # keeps driving the same tab over CDP exactly as before.
+            $edgeArgs = "--kiosk `"$homeUrl`" --edge-kiosk-type=fullscreen --kiosk-idle-timeout-minutes=0 --no-first-run --remote-debugging-port=9222 --remote-allow-origins=http://127.0.0.1:9222 --user-data-dir=`"C:\EdgeKiosk`""
 
             $action    = New-ScheduledTaskAction -Execute $edgePath -Argument $edgeArgs
             $trigger   = New-ScheduledTaskTrigger -AtLogOn
