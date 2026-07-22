@@ -31,6 +31,7 @@ import {
   orderBy,
   limit,
   serverTimestamp,
+  arrayRemove,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   getStorage,
@@ -98,8 +99,9 @@ export { signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged,
 export const COLLECTIONS = {
   tenants: "tenants",
   devices: "kiosk_devices",
-  persons: "deceased_persons",
-  families: "families",
+  persons: "deceased_individuals",
+  families: "deceased_families",
+  admins: "admins",
 };
 
 /** Reference to the media subcollection for a specific person. */
@@ -127,6 +129,7 @@ export {
   orderBy,
   limit,
   serverTimestamp,
+  arrayRemove,
   storageRef,
   uploadBytesResumable,
   getDownloadURL,

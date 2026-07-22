@@ -6,7 +6,7 @@ import {
   signOut,
   doc,
   getDoc,
-} from "./firebase.js?v=3";
+} from "./firebase.js?v=5";
 
 const form      = document.getElementById("loginForm");
 const emailEl   = document.getElementById("email");
@@ -55,8 +55,8 @@ form.addEventListener("submit", async (e) => {
   try {
     const { user } = await signInWithEmailAndPassword(auth, email, password);
 
-    // Look up this user's memorial-site assignment in Firestore.
-    const userSnap = await getDoc(doc(db, "users", user.uid));
+    // Look up this admin's memorial-site assignment in Firestore.
+    const userSnap = await getDoc(doc(db, "admins", user.uid));
     const userData = userSnap.exists() ? userSnap.data() : {};
 
     // No tenant = the account hasn't been linked to a memorial site yet.

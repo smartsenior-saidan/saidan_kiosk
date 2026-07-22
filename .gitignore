@@ -2,3 +2,7 @@ node_modules/
 package.json
 package-lock.json
 .DS_Store
+
+# Firebase Admin service-account key (secret — used by scripts/rename-tenant.js)
+serviceAccountKey.json
+**/serviceAccountKey.json

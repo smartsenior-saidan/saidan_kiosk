@@ -813,6 +813,17 @@
 }
 
 .profile-name { font-weight: 600; font-size: 0.9rem; }
+
+/* Monospace display ID (KDR-F0001, KDR-F0001-01, KDR-I0001) */
+.entity-id {
+  font-family: ui-monospace, "SF Mono", "Menlo", monospace;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.drill-header .entity-id { font-size: 0.85rem; }
 .profile-meta { font-size: 0.78rem; color: var(--color-text-muted); }
 .table-actions { display: flex; gap: 6px; }
 
@@ -887,16 +898,32 @@
 
 /* Chevron on each family row, hinting it drills into the members */
 .drill-chevron {
-  width: 28px;
+  width: 20px;
   text-align: right;
   color: var(--color-text-muted);
   font-size: 1.15rem;
   transition: transform 0.14s var(--ease-out), color 0.14s var(--ease-out);
 }
 
-tr[data-family]:hover .drill-chevron {
+tr[data-key]:hover .drill-chevron {
   color: var(--color-accent);
   transform: translateX(3px);
+}
+
+/* Family-row actions (delete + chevron), right-aligned in the last cell */
+.fam-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+.fam-row-actions .btn-danger {
+  min-height: 30px;
+  min-width: unset;
+  padding: 0 12px;
+  font-size: 0.78rem;
+  border-radius: 8px;
 }
 
 /* ---- Form layout ----------------------------------------------------------------------- */

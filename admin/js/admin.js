@@ -17,6 +17,7 @@ import {
   tenantQuery,
   withTenant,
   serverTimestamp,
+  arrayRemove,
   storageRef,
   uploadBytesResumable,
   getDownloadURL,
@@ -27,8 +28,8 @@ import {
   DISPLAY_NAME,
   personMediaCollection,
   personMediaDoc,
-} from "./firebase.js?v=4";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=25";
+} from "./firebase.js?v=6";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=27";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,7 @@ function matchesProfileQuery(person, rawQuery) {
 let dashboardPersons = [];  // cached for the family/individual panel search
 let familyRecords = [];     // named family docs (the `families` collection)
 let selectedFamilyKey = null; // Family page: which family is drilled into (null = families list)
+let entityIds = { family: new Map(), person: new Map() }; // display IDs (KDR-F0001, KDR-F0001-01, KDR-I0001)
 let currentSection = "dashboard";
 let sortField = "last_name"; // last_name | first_name | death_date | created_at
 let sortDir   = "asc";       // asc | desc
@@ -222,6 +224,7 @@ async function loadMembers() {
     const personSnap = await getDocs(tenantQuery(COLLECTIONS.persons));
     dashboardPersons = personSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
     await loadFamilies();
+    recomputeEntityIds();
     renderFamilyIndividualPanel();
   } catch (err) {
     console.error("[members] load failed:", err);
@@ -237,6 +240,8 @@ async function loadFamilies() {
   try {
     const snap = await getDocs(tenantQuery(COLLECTIONS.families));
     familyRecords = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    // Oldest first so each family keeps a stable F-number as new ones are added.
+    familyRecords.sort((a, b) => (a.created_at?.seconds ?? 0) - (b.created_at?.seconds ?? 0));
   } catch (err) {
     console.warn("[families] load failed (is the families security rule deployed?):", err.message || err);
     familyRecords = [];
@@ -291,6 +296,49 @@ function buildFamilies() {
   return [...recordFamilies, ...legacyFamilies];
 }
 
+// Short tenant prefix for the display IDs (e.g. "Kodaira Reien" → "KDR").
+// Consonants of the name first (so vowels don't dominate); fall back to the
+// plain letters. A tenant can override this later with an explicit code field.
+function tenantCode() {
+  const name = (TENANT_ID || "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+  const letters = name.replace(/[^A-Za-z]/g, "");
+  const consonants = letters.replace(/[AEIOUaeiou]/g, "");
+  const base = (consonants.length >= 3 ? consonants : letters).toUpperCase();
+  return base.slice(0, 3) || "TEN";
+}
+
+// Build the display-ID maps for the current data:
+//   family key   → "KDR-F0001"
+//   person id    → "KDR-F0001-01" (family member) or "KDR-I0001" (individual)
+// Families are numbered in their stable list order; individuals by age. IDs are
+// derived for display only (admin) — not persisted.
+function recomputeEntityIds() {
+  const code = tenantCode();
+  const family = new Map();
+  const person = new Map();
+
+  buildFamilies().forEach((f, i) => {
+    const fid = `${code}-F${String(i + 1).padStart(4, "0")}`;
+    family.set(f.key, fid);
+    f.members.forEach((p, j) => {
+      person.set(p.id, `${fid}-${String(j + 1).padStart(2, "0")}`);
+    });
+  });
+
+  const covered = familyMemberIdSet();
+  dashboardPersons
+    .filter((p) => !(p.related_persons || []).length && !covered.has(p.id))
+    .sort((a, b) => (a.created_at?.seconds ?? 0) - (b.created_at?.seconds ?? 0))
+    .forEach((p, i) => {
+      person.set(p.id, `${code}-I${String(i + 1).padStart(4, "0")}`);
+    });
+
+  entityIds = { family, person };
+}
+
 // Individual view: people with no family links AND not in any family record.
 function renderIndividualSection() {
   const el = document.getElementById("fiIndividualList");
@@ -326,6 +374,7 @@ function renderFamilySection() {
       <div class="drill-header">
         <button type="button" class="btn-secondary" id="familyBackBtn">${t("fi.backToFamilies")}</button>
         <span class="drill-title">${esc(open.name)}</span>
+        <span class="entity-id">${esc(entityIds.family.get(open.key) || "")}</span>
       </div>
       <div id="familyMembersTable"></div>`;
     const tableEl = document.getElementById("familyMembersTable");
@@ -353,11 +402,19 @@ function renderFamilySection() {
         <td>
           <div class="avatar-cell">
             <div class="avatar">${esc((f.name.charAt(0) || "✦").toUpperCase())}</div>
-            <div class="profile-name">${esc(f.name)}</div>
+            <div>
+              <div class="profile-name">${esc(f.name)}</div>
+              <div class="profile-meta entity-id">${esc(entityIds.family.get(f.key) || "")}</div>
+            </div>
           </div>
         </td>
         <td>${f.members.length}${t("fi.peopleSuffix")}</td>
-        <td class="drill-chevron">›</td>
+        <td>
+          <div class="fam-row-actions">
+            <button class="btn-danger" data-fam-delete="${esc(f.key)}">${t("btn.delete")}</button>
+            <span class="drill-chevron">›</span>
+          </div>
+        </td>
       </tr>`)
     .join("");
 
@@ -382,6 +439,68 @@ function renderFamilySection() {
       renderFamilySection();
     });
   });
+
+  // Delete button must not also drill into the family row.
+  el.querySelectorAll("[data-fam-delete]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteFamily(btn.dataset.famDelete);
+    });
+  });
+}
+
+// Remove a family: delete the named record (if any) and dissolve the grouping
+// by stripping the members' mutual related_persons links. The profiles remain
+// as individuals — only the family grouping goes away.
+async function deleteFamily(key) {
+  const fam = buildFamilies().find((f) => f.key === key);
+  if (!fam) return;
+
+  const ok = await confirmDialog({
+    title: t("confirm.deleteFamilyTitle"),
+    body: t("confirm.deleteFamily", { name: fam.name }),
+    confirmLabel: t("btn.confirmDeleteFamily"),
+  });
+  if (!ok) return;
+
+  setStatus(t("status.deleting"), "info");
+  try {
+    if (key.startsWith("rec:")) {
+      await deleteDoc(doc(db, COLLECTIONS.families, key.slice(4)));
+    }
+
+    // Dissolve the clique — remove only the links pointing at other members of
+    // this family (any link to someone outside it is left intact).
+    const memberIds = fam.members.map((m) => m.id);
+    for (const m of fam.members) {
+      const remaining = (m.related_persons || []).filter((id) => !memberIds.includes(id));
+      if (remaining.length !== (m.related_persons || []).length) {
+        await updateDoc(doc(db, COLLECTIONS.persons, m.id), {
+          related_persons: remaining,
+          updated_at: serverTimestamp(),
+        });
+      }
+    }
+
+    // Refresh caches: reload family records, and mirror the unlink in memory.
+    await loadFamilies();
+    for (const list of [dashboardPersons, allProfiles]) {
+      for (const p of list) {
+        if (memberIds.includes(p.id) && p.related_persons?.length) {
+          p.related_persons = p.related_persons.filter((id) => !memberIds.includes(id));
+        }
+      }
+    }
+
+    selectedFamilyKey = null;
+    recomputeEntityIds();
+    renderFamilyIndividualPanel();
+    renderStats(allProfiles);
+    setStatus(t("status.familyDeleted", { name: fam.name }), "success");
+  } catch (err) {
+    console.error("[admin] delete family failed:", err);
+    setStatus(t("status.deleteFailed", { msg: err.message }), "error");
+  }
 }
 
 // ── Full profile list ─────────────────────────────────────────────────────────
@@ -483,6 +602,7 @@ async function loadProfileList() {
     allProfiles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     dashboardPersons = allProfiles;
     await loadFamilies();
+    recomputeEntityIds();
     renderProfileTable(allProfiles);
     renderStats(allProfiles);
   } catch (err) {
@@ -523,6 +643,7 @@ function renderPersonsTable(container, persons, actionPool) {
       <table class="profiles-table">
         <thead>
           <tr>
+            <th>${t("table.id")}</th>
             <th class="sortable" data-sort="last_name">${t("table.lastName")} ${sortIcon("last_name")}</th>
             <th class="sortable" data-sort="first_name">${t("table.firstName")} ${sortIcon("first_name")}</th>
             <th class="sortable" data-sort="death_date">${t("table.passed")} ${sortIcon("death_date")}</th>
@@ -563,6 +684,7 @@ function profileRow(p, full = false) {
   if (full) {
     return `
       <tr data-id="${p.id}">
+        <td><span class="entity-id">${esc(entityIds.person.get(p.id) || "—")}</span></td>
         <td>
           <div class="avatar-cell">
             <div class="avatar">${esc(initials)}</div>
@@ -950,8 +1072,10 @@ function initFamilyBuilder() {
 
 async function saveFamilyBuilder() {
   const nameEl = document.getElementById("nfName");
-  const name = (nameEl?.value || "").trim();
-  if (!name) { setStatus(t("nf.needName"), "error"); nameEl?.focus(); return; }
+  const raw = (nameEl?.value || "").trim();
+  if (!raw) { setStatus(t("nf.needName"), "error"); nameEl?.focus(); return; }
+  // Every family name ends in 家 (山田 → 山田家); don't double it if already there.
+  const name = raw.endsWith("家") ? raw : `${raw}家`;
 
   const saveBtn = document.getElementById("nfSaveBtn");
   const ids = familyBuilder.map((p) => p.id);
@@ -1258,14 +1382,49 @@ async function deleteProfile(person) {
     console.warn("[admin] media cleanup skipped:", mediaErr.message);
   }
 
+  // Detach from the family so nothing dangles: strip this person's id out of
+  // every relative's related_persons and out of any family record's member_ids.
+  // arrayRemove is atomic (no read, no clobber). Non-blocking, like media above.
+  try {
+    for (const rid of (person.related_persons || [])) {
+      await updateDoc(doc(db, COLLECTIONS.persons, rid), {
+        related_persons: arrayRemove(person.id),
+        updated_at: serverTimestamp(),
+      });
+    }
+    for (const fam of familyRecords) {
+      if ((fam.member_ids || []).includes(person.id)) {
+        await updateDoc(doc(db, COLLECTIONS.families, fam.id), {
+          member_ids: arrayRemove(person.id),
+          updated_at: serverTimestamp(),
+        });
+      }
+    }
+  } catch (linkErr) {
+    console.warn("[admin] family link cleanup skipped:", linkErr.message);
+  }
+
   // Always delete the person document.
   try {
     await deleteDoc(doc(db, COLLECTIONS.persons, person.id));
     setStatus(t("status.deletedToast", { name: `${person.first_name} ${person.last_name}` }), "success");
     allProfiles = allProfiles.filter((p) => p.id !== person.id);
+    dashboardPersons = dashboardPersons.filter((p) => p.id !== person.id);
+    // Mirror the link cleanup in-memory so the family/individual views are
+    // immediately correct (e.g. a relative left with no links becomes solo).
+    for (const p of dashboardPersons) {
+      if (p.related_persons?.includes(person.id)) {
+        p.related_persons = p.related_persons.filter((id) => id !== person.id);
+      }
+    }
+    for (const fam of familyRecords) {
+      if (fam.member_ids?.includes(person.id)) {
+        fam.member_ids = fam.member_ids.filter((id) => id !== person.id);
+      }
+    }
+    recomputeEntityIds();
     renderProfileTable(allProfiles);
     renderStats(allProfiles);
-    dashboardPersons = dashboardPersons.filter((p) => p.id !== person.id);
     // Delete can be triggered from the Family / Individual tables too — refresh
     // whichever of those is showing so the removed row disappears immediately.
     renderFamilyIndividualPanel();
@@ -1279,8 +1438,8 @@ async function deleteProfile(person) {
 
 // ── Background presets ───────────────────────────────────────────────────────
 // Backgrounds are 5 images shared across every profile, not an upload per
-// person. They live once at Storage path _shared/background{1..5}.{ext} so
-// every tenant uses the same set with a single upload — but a tenant can
+// person. They live once at Storage path individuals_backgrounds/background{1..5}.{ext}
+// so every tenant uses the same set with a single upload — but a tenant can
 // still get its own distinct set later, with no code change, by uploading to
 // {TENANT_ID}/backgrounds/background{n}.{ext} instead; that path is checked
 // first and wins over the shared one when present.
@@ -1289,7 +1448,7 @@ const BG_PRESET_COUNT = 5;
 const BG_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
 
 async function resolveBgPreset(n) {
-  for (const base of [`${TENANT_ID}/backgrounds`, `_shared`]) {
+  for (const base of [`${TENANT_ID}/backgrounds`, `individuals_backgrounds`]) {
     for (const ext of BG_EXTENSIONS) {
       const path = `${base}/background${n}.${ext}`;
       try {

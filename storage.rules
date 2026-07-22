@@ -1,0 +1,45 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Checks the /admins/{uid} doc exists before reading it — avoids a rules
+    // error (and unclear "denied" reason) for unlinked/fake accounts.
+    function userExists() {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+    }
+
+    // Mirrors firestore.rules' ownsTenant() — reads tenant_id live from
+    // /admins/{uid}, never trusts anything from the client.
+    function userTenant() {
+      return firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.tenant_id;
+    }
+
+    function ownsTenant(t) {
+      return userExists() && userTenant() == t;
+    }
+
+    // Per-tenant memorial media.
+    // Public read (kiosk is unauthenticated, same as deceased_individuals in Firestore).
+    // Writes only allowed to staff whose Firestore tenant_id matches this folder.
+    match /{tenantId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if ownsTenant(tenantId);
+    }
+
+    // Shared fallback backgrounds — public read, no client writes (console-managed).
+    match /individuals_backgrounds/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Deny anything unmatched.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -7,7 +7,7 @@
 #   2. Registers a login task that starts Edge fullscreen on the correct tenant URL
 #      (so the kiosk website loads the right background + database)
 
-$siteName   = "testtenant1"   # <-- CHANGE THIS PER TENANT
+$siteName   = "demo"   # <-- CHANGE THIS PER TENANT
 $homeUrl    = "https://kiosk.saidans.org?site=$siteName"
 $edgePath   = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 

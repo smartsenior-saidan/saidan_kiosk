@@ -3,13 +3,20 @@ rules_version = '2';
 // SmartSenior — multi-tenant memorial kiosk.
 //
 // Tenant isolation model:
-//   • Each staff login has a /users/{uid} doc holding their `tenant_id`.
+//   • Each staff login has an /admins/{uid} doc holding their `tenant_id`.
 //   • Admin writes are allowed ONLY when the document's tenant_id matches the
-//     signed-in user's tenant_id (read live from /users, never trusted from
+//     signed-in user's tenant_id (read live from /admins, never trusted from
 //     the client). This is what actually splits the database per memorial site.
-//   • Memorial content (persons, media) is publicly READABLE because the
-//     visitor-facing kiosk runs without authentication. Each kiosk is pinned to
-//     one tenant at the query level, but reads themselves are open.
+//   • Memorial content (individuals, media, families) is publicly READABLE
+//     because the visitor-facing kiosk runs without authentication. Each kiosk
+//     is pinned to one tenant at the query level, but reads themselves are open.
+//
+// NOTE (collection rename migration): the collections were renamed
+//   users → admins, deceased_persons → deceased_individuals, families → deceased_families.
+// The OLD-name blocks below are TRANSITIONAL — they keep any not-yet-redeployed
+// code working during the migration. Delete the blocks marked "REMOVE AFTER
+// MIGRATION" once every kiosk/admin is on the new code and the old collections
+// have been deleted.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -18,14 +25,14 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // The signed-in user's assigned tenant, read from their /users record.
+    // The signed-in user's assigned tenant, read from their /admins record.
     function userTenant() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenant_id;
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.tenant_id;
     }
 
     function userExists() {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
     // True when the signed-in user belongs to tenant `t`.
@@ -34,18 +41,17 @@ service cloud.firestore {
     }
 
     // ── Staff accounts ──────────────────────────────────────────────────────
-    match /users/{uid} {
+    match /admins/{uid} {
       allow read:  if isSignedIn() && request.auth.uid == uid;
       allow write: if false;
     }
 
-    // ── Memorial profiles ───────────────────────────────────────────────────
-    match /deceased_persons/{personId} {
+    // ── Memorial profiles (individuals) ─────────────────────────────────────
+    match /deceased_individuals/{personId} {
       allow read:          if true;                                   // public kiosk
       allow create:        if ownsTenant(request.resource.data.tenant_id);
       allow update, delete: if ownsTenant(resource.data.tenant_id);
 
-      // ── Media subcollection (photos / videos) ───────────────────────────
       match /media/{mediaId} {
         allow read:          if true;                                 // public kiosk
         allow create:        if ownsTenant(request.resource.data.tenant_id);
@@ -54,7 +60,7 @@ service cloud.firestore {
     }
 
     // ── Family groups (admin-created, named; may have zero members) ─────────
-    match /families/{familyId} {
+    match /deceased_families/{familyId} {
       allow read:          if true;                                   // public kiosk (future use)
       allow create:        if ownsTenant(request.resource.data.tenant_id);
       allow update, delete: if ownsTenant(resource.data.tenant_id);
@@ -71,6 +77,30 @@ service cloud.firestore {
       allow read:  if true;
       allow write: if false;
     }
+
+    // ══ TRANSITIONAL — REMOVE AFTER MIGRATION ════════════════════════════════
+    // Old collection names, kept readable/writable so code that hasn't been
+    // redeployed yet keeps working while data is copied to the new names.
+    match /users/{uid} {
+      allow read:  if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+    match /deceased_persons/{personId} {
+      allow read:          if true;
+      allow create:        if ownsTenant(request.resource.data.tenant_id);
+      allow update, delete: if ownsTenant(resource.data.tenant_id);
+      match /media/{mediaId} {
+        allow read:          if true;
+        allow create:        if ownsTenant(request.resource.data.tenant_id);
+        allow update, delete: if ownsTenant(resource.data.tenant_id);
+      }
+    }
+    match /families/{familyId} {
+      allow read:          if true;
+      allow create:        if ownsTenant(request.resource.data.tenant_id);
+      allow update, delete: if ownsTenant(resource.data.tenant_id);
+    }
+    // ══ END TRANSITIONAL ═════════════════════════════════════════════════════
 
     // Everything else: deny.
     match /{document=**} {

@@ -72,7 +72,7 @@ export const storage = getStorage(app);
 export const COLLECTIONS = {
   tenants: "tenants",
   devices: "kiosk_devices",
-  persons: "deceased_persons",
+  persons: "deceased_individuals",
 };
 
 /** Reference to the media subcollection for a specific person. */
