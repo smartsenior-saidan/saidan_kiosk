@@ -42,4 +42,15 @@
     themeLink.onerror = function () { themeLink.remove(); };
     document.head.appendChild(themeLink);
   } catch (e) {}
+
+  // 3) Hide the page from the FIRST paint until the tenant theme is applied, so
+  //    the default accent color never flashes before the tenant's own color
+  //    loads from Firestore. tenant-bg.js clears this once the theme is set; the
+  //    timeout is a safety net so the page can never stay hidden if that fails.
+  try {
+    document.documentElement.classList.add("theme-pending");
+    setTimeout(function () {
+      document.documentElement.classList.remove("theme-pending");
+    }, 3000);
+  } catch (e) {}
 })();

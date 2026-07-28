@@ -85,7 +85,13 @@ export async function applyTenantBackground() {
   const tenantId = window.__ENV__?.TENANT_ID;
 
   document.body.classList.add("bg-loading");
-  const timeout = setTimeout(() => document.body.classList.remove("bg-loading"), BG_TIMEOUT_MS);
+  // Reveal the page: drop both the pre-paint theme gate (from config.js) and the
+  // background gate. Called once the theme is applied, or by the safety timeout.
+  const reveal = () => {
+    document.documentElement.classList.remove("theme-pending");
+    document.body.classList.remove("bg-loading");
+  };
+  const timeout = setTimeout(reveal, BG_TIMEOUT_MS);
 
   try {
     if (!tenantId) return;
@@ -117,6 +123,6 @@ export async function applyTenantBackground() {
     console.warn("[tenant-bg] theme apply failed:", err);
   } finally {
     clearTimeout(timeout);
-    document.body.classList.remove("bg-loading");
+    reveal();
   }
 }
