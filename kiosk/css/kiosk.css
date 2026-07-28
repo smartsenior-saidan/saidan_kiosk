@@ -28,6 +28,12 @@ body {
 body.bg-loading {
   opacity: 0;
 }
+/* Hide from the very first paint (set by config.js in <head>, before body
+   renders) until the tenant theme is applied, so the default accent never
+   flashes. Cleared by tenant-bg.js once the tenant's color is set. */
+html.theme-pending body {
+  opacity: 0;
+}
 
 .kiosk-scroll {
   overflow-y: auto;
