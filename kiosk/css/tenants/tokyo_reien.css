@@ -1,0 +1,37 @@
+/* ==========================================================================
+   Tenant theme — tokyo_reien (Tokyo Reien columbarium)
+   Filename MUST equal the tenant id (the tenants/{id} doc id + the device's
+   active TENANT_ID) or it won't load. Underscores, not hyphens.
+   --------------------------------------------------------------------------
+   Auto-loaded (by js/config.js) AFTER kiosk.css, and scoped by
+   :root[data-tenant="tokyo_reien"] so nothing leaks to other tenants.
+
+   Why this file exists: tokyo_reien's accent_color (from Firestore) is a dusty
+   pink, which is great on the light welcome photo — but on the PINK sakura
+   backgrounds the pink accent camouflages. These overrides re-tint the few
+   accent-driven bits that sit ON pink so they stay legible.
+   ========================================================================== */
+
+/* ── Thank-you countdown ────────────────────────────────────────────────────
+   The ring fill + number default to var(--color-accent) (pink) — invisible on
+   the pink thank-you background. Re-tint to white so they read bright and clear
+   against the pink, matching the white sakura petals. Selector out-specifies
+   the page's inline <style> (a single .class), so no !important needed. */
+:root[data-tenant="tokyo_reien"] .ty-ring-fill {
+  stroke: #ffffff;
+}
+
+:root[data-tenant="tokyo_reien"] .ty-countdown-num {
+  color: #ffffff;
+}
+
+:root[data-tenant="tokyo_reien"] .ty-ring-track {
+  stroke: rgba(255, 255, 255, 0.35); /* faint white track so the circle reads */
+}
+
+/* ── Welcome search button ──────────────────────────────────────────────────
+   Keep the translucent-pink CTA borderless (looks cleaner on the pink bg); just
+   swap the base blue-tinted shadow for a plum one that suits the sakura palette. */
+:root[data-tenant="tokyo_reien"] .home-start-btn {
+  box-shadow: 0 8px 28px rgba(90, 39, 51, 0.22);
+}
