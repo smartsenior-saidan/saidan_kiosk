@@ -1,0 +1,492 @@
+/* ==========================================================================
+   Columbarium Interactive Guide — kiosk styles
+   A solemn, photographic look: ink background, sakura/gold accents, large
+   touch targets. Full-screen, no chrome, touch-first. Distinct from saidan.
+   ========================================================================== */
+
+:root {
+  --ink:          #14110f;
+  --ink-2:        #1d1815;
+  --panel:        rgba(28, 24, 21, 0.72);
+  --panel-solid:  #201b17;
+  --line:         rgba(233, 224, 214, 0.16);
+  --text:         #f4efe8;
+  --text-muted:   #b8ada0;
+  --sakura:       #e6a4b4;
+  --gold:         #c9a86a;
+  --gold-dark:    #a98a4f;
+
+  --radius:       18px;
+  --radius-lg:    26px;
+  --tap-min:      64px;              /* SRS §5-2: min 60px physical */
+
+  --font-serif:   "Shippori Mincho", "Yu Mincho", "游明朝", serif;
+  --font-sans:    -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN",
+                  "Hiragino Sans", "Yu Gothic Medium", "Noto Sans JP", sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+
+html {
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+body {
+  height: 100%;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font-sans);
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+  overflow: hidden;
+}
+
+/* Hide everything until boot() finishes wiring, then fade in. */
+body.booting { opacity: 0; }
+body { transition: opacity 0.4s ease; }
+
+/* ── Screen system (cross-fade state machine) ───────────────────────────── */
+.screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+.screen.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.hidden { display: none !important; }
+
+/* Shared full-bleed background layer. A client-supplied photo (set at runtime
+   via the --photo variable) shows when present; otherwise the gradient below is
+   the fallback. .bg::after paints a legibility scrim over whichever is shown. */
+.bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+.bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+/* ============================================================
+   STATE 1 — WELCOME
+   ============================================================ */
+#screen-welcome {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+#screen-welcome .bg {
+  background-image:
+    radial-gradient(120% 90% at 50% 0%, rgba(230, 164, 180, 0.22), transparent 60%),
+    linear-gradient(180deg, #2a2320 0%, #14110f 70%);
+}
+#screen-welcome .bg::after {
+  background: radial-gradient(120% 90% at 50% 0%, rgba(230, 164, 180, 0.18), transparent 55%),
+    linear-gradient(180deg, rgba(20, 17, 15, 0.35) 0%, rgba(20, 17, 15, 0.7) 100%);
+}
+.welcome-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(18px, 3vh, 40px);
+  padding: 6vh 6vw;
+}
+.welcome-title {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: clamp(44px, 6.5vw, 104px);
+  letter-spacing: 0.08em;
+  margin: 0;
+  color: var(--text);
+}
+.welcome-lead {
+  font-family: var(--font-serif);
+  font-size: clamp(20px, 2.4vw, 40px);
+  letter-spacing: 0.35em;
+  color: var(--gold);
+  margin: 0;
+}
+.welcome-sub {
+  font-size: clamp(16px, 1.6vw, 26px);
+  color: var(--text-muted);
+  max-width: 60ch;
+  line-height: 1.8;
+  margin: 0;
+}
+.welcome-guide {
+  margin-top: clamp(20px, 5vh, 70px);
+  font-size: clamp(20px, 2.2vw, 36px);
+  color: var(--text);
+  padding: 0.9em 1.8em;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(20, 17, 15, 0.4);
+  animation: breathe 3.2s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.55; transform: translateY(0); }
+  50%      { opacity: 1;    transform: translateY(-4px); }
+}
+
+/* ============================================================
+   STATE 2 — SEARCH
+   ============================================================ */
+#screen-search { align-items: stretch; }
+#screen-search .bg {
+  background-image: linear-gradient(160deg, #241d19, #14110f);
+}
+#screen-search .bg::after {
+  background: linear-gradient(90deg, rgba(20,17,15,0.82) 0%, rgba(20,17,15,0.3) 50%, rgba(20,17,15,0.72) 100%);
+}
+
+/* Top status row: back + heading + offline badge. */
+.search-topbar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: clamp(20px, 3vh, 40px) clamp(28px, 4vw, 60px);
+}
+.search-heading {
+  font-family: var(--font-serif);
+  font-size: clamp(24px, 2.6vw, 44px);
+  letter-spacing: 0.2em;
+  color: var(--text);
+}
+.spacer { flex: 1; }
+.offline-badge {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  color: var(--ink);
+  background: var(--gold);
+  padding: 8px 18px;
+  border-radius: 999px;
+}
+.offline-badge.show { display: inline-flex; }
+
+/* The search panel — anchored bottom-right, kept in the lower half of the
+   screen so all controls stay in the elderly touch-comfort zone (SRS §5-2). */
+.search-panel {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  margin: 0 clamp(28px, 4vw, 60px) clamp(28px, 4vh, 56px) 0;
+  align-self: flex-end;
+  width: min(720px, 46vw);
+  max-height: calc(100dvh - clamp(40px, 6vh, 90px));
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+/* Mode tabs */
+.mode-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 14px 14px 0;
+}
+.mode-tab {
+  flex: 1;
+  min-height: var(--tap-min);
+  font-family: inherit;
+  font-size: clamp(17px, 1.4vw, 22px);
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius) var(--radius) 0 0;
+  cursor: pointer;
+}
+.mode-tab.active {
+  color: var(--ink);
+  background: var(--gold);
+  font-weight: 700;
+}
+
+.panel-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto; /* safety net: never hard-clip the keyboard on short screens */
+}
+
+/* Search field */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.field input {
+  flex: 1;
+  min-height: var(--tap-min);
+  font-family: inherit;
+  font-size: clamp(22px, 2vw, 32px);
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0 20px;
+  outline: none;
+}
+.field input::placeholder { color: var(--text-muted); }
+
+.btn {
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  padding: 0 22px;
+  font-family: inherit;
+  font-size: clamp(16px, 1.4vw, 22px);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--gold); color: var(--ink); border-color: var(--gold); font-weight: 700; }
+.btn-ghost   { background: transparent; }
+
+/* Keyboards */
+.kb { display: flex; flex-direction: column; gap: 6px; }
+.kb-rows { display: flex; gap: 6px; align-items: stretch; }
+.kb-main { flex: 1; display: grid; gap: 6px; }
+.kb-special {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-auto-rows: 1fr;
+  gap: 6px;
+  width: clamp(52px, 6vw, 68px);
+}
+.kb-key, .kp-key {
+  min-height: 52px;
+  font-family: var(--font-serif);
+  font-size: clamp(19px, 1.7vw, 27px);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.kb-key:active, .kp-key:active { background: var(--gold); color: var(--ink); }
+.kb-empty { visibility: hidden; }
+.kb-action, .kp-action { background: rgba(201, 168, 106, 0.16); color: var(--gold); }
+.kb-space {
+  min-height: 54px;
+  font-family: inherit;
+  font-size: clamp(16px, 1.4vw, 22px);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.kb-space:active { background: var(--gold); color: var(--ink); }
+
+.keypad-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+/* Results list — fills the open area to the LEFT of the search panel. */
+.results {
+  flex: 1 1 auto;
+  min-width: 0;
+  z-index: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-content: flex-start;
+  padding: clamp(88px, 12vh, 128px) clamp(24px, 3vw, 48px) clamp(24px, 4vh, 48px);
+}
+.results-count { margin: 0 2px 4px; color: var(--text-muted); font-size: 18px; }
+.results-empty { padding: 28px 8px; color: var(--text-muted); line-height: 1.9; text-align: center; }
+
+.result-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "main go" "meta go";
+  align-items: center;
+  gap: 4px 16px;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.rc-main { grid-area: main; }
+.rc-meta { grid-area: meta; }
+.rc-name { font-family: var(--font-serif); font-size: clamp(22px, 1.9vw, 30px); }
+.rc-reading { font-size: 16px; color: var(--text-muted); margin-top: 2px; }
+.rc-section { font-size: 17px; color: var(--text-muted); }
+.rc-section strong { color: var(--gold); }
+.rc-go {
+  grid-area: go;
+  min-height: var(--tap-min);
+  padding: 0 22px;
+  font-family: inherit;
+  font-size: clamp(16px, 1.3vw, 20px);
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--gold);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.rc-go:active { background: var(--gold-dark); }
+
+/* ============================================================
+   STATE 3/4 — MAP
+   ============================================================ */
+/* NB: don't set position here — .screen already provides position:fixed/inset:0,
+   which is the positioning context the absolute map layers size against. */
+#screen-map .bg { background-image: linear-gradient(160deg, #221c18, #14110f); }
+
+.map-topbar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: clamp(18px, 3vh, 36px) clamp(24px, 4vw, 56px);
+  pointer-events: none;
+}
+.map-topbar > * { pointer-events: auto; }
+.map-label { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+.map-name { font-family: var(--font-serif); font-size: clamp(24px, 2.4vw, 40px); color: var(--text); }
+.map-section { font-size: clamp(16px, 1.6vw, 24px); color: var(--gold); letter-spacing: 0.08em; }
+.top-end { position: static; } /* sits inside the topbar flex row */
+
+.map-layer { position: absolute; inset: 0; z-index: 1; }
+.map-layer.hidden { display: none; }
+
+/* 2D floor map */
+.map-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none; /* pan/zoom handled in map.js */
+  cursor: grab;
+}
+.map-viewport:active { cursor: grabbing; }
+.map-world {
+  position: absolute;
+  left: 0; top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.floor-svg { width: 100%; height: auto; display: block; }
+
+.building { fill: rgba(255, 255, 255, 0.03); stroke: var(--line); stroke-width: 2; }
+.sec rect { fill: rgba(255, 255, 255, 0.06); stroke: var(--line); stroke-width: 2; transition: fill 0.2s; }
+.sec .sec-label {
+  fill: var(--text-muted); font-size: 34px; font-family: var(--font-serif);
+  text-anchor: middle; dominant-baseline: middle;
+}
+.sec.is-target rect {
+  fill: rgba(201, 168, 106, 0.30); stroke: var(--gold); stroke-width: 4;
+  cursor: pointer; animation: secPulse 1.8s ease-in-out infinite;
+}
+.sec.is-target .sec-label { fill: var(--text); font-weight: 700; }
+@keyframes secPulse { 0%, 100% { stroke-opacity: 0.45; } 50% { stroke-opacity: 1; } }
+.here circle { fill: var(--sakura); stroke: #fff; stroke-width: 3; }
+.here-label { fill: var(--text); font-size: 26px; text-anchor: middle; }
+.here-path { stroke: var(--gold); stroke-width: 3; stroke-dasharray: 10 10; opacity: 0.6; }
+
+.map-hint {
+  position: absolute;
+  left: 50%; bottom: clamp(24px, 5vh, 56px);
+  transform: translateX(-50%);
+  z-index: 2;
+  background: rgba(20, 17, 15, 0.7);
+  color: var(--text);
+  padding: 12px 28px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: clamp(15px, 1.5vw, 22px);
+  pointer-events: none;
+}
+
+/* 2.5D niche wall */
+#map25d { display: flex; align-items: center; justify-content: center; }
+.niche-scene { perspective: 1400px; }
+.niche-wall {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 12), 1fr);
+  gap: 8px;
+  width: min(80vw, 1100px);
+  transform: rotateX(14deg) rotateY(-16deg);
+  transform-style: preserve-3d;
+}
+.niche {
+  aspect-ratio: 3 / 4;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.niche.row-hit { background: rgba(201, 168, 106, 0.22); border-color: var(--gold-dark); }
+.niche.exact {
+  background: var(--gold);
+  border-color: #fff;
+  box-shadow: 0 0 24px rgba(201, 168, 106, 0.8);
+}
+.niche-caption {
+  position: absolute;
+  top: clamp(84px, 12vh, 130px); left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-serif);
+  font-size: clamp(24px, 2.6vw, 44px);
+  color: var(--gold);
+  letter-spacing: 0.1em;
+}
+.map-back {
+  position: absolute;
+  left: 50%; bottom: clamp(24px, 5vh, 56px);
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
+/* Portrait / smaller displays: stack results above a full-width panel. */
+@media (max-width: 900px) {
+  #screen-search { flex-direction: column; }
+  .results { padding: clamp(80px, 11vh, 110px) 16px 12px; }
+  .search-panel {
+    width: auto;
+    align-self: stretch;
+    margin: 0 16px 16px;
+    max-height: 62vh;
+  }
+}

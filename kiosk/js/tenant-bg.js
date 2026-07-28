@@ -54,6 +54,31 @@ function applyAccentColor(hex) {
   root.style.setProperty("--color-accent-dark", darken(hex, 20));
 }
 
+// ── Feature flags ────────────────────────────────────────────────────────────
+// tenants/{id}.features is a map like { slideshow: true, family: false }. Each
+// enabled flag adds an `html.feat-<key>` class (and a data-feat-<key> attr) so
+// features can be shown/hidden per tenant from CSS alone — no per-page JS edits.
+// An absent flag means "off", so new features stay dark for existing tenants.
+function applyFeatureFlags(features) {
+  if (!features || typeof features !== "object") return;
+  const root = document.documentElement;
+  for (const [key, on] of Object.entries(features)) {
+    root.classList.toggle(`feat-${key}`, !!on);
+    root.setAttribute(`data-feat-${key}`, on ? "on" : "off");
+  }
+}
+
+// ── String overrides ─────────────────────────────────────────────────────────
+// tenants/{id}.strings is a map of { i18nKey: "text" } that overrides the
+// page's default copy for any element carrying data-i18n. Absent key = default.
+function applyStringOverrides(strings) {
+  if (!strings || typeof strings !== "object") return;
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const v = strings[el.dataset.i18n];
+    if (v != null) el.textContent = v;
+  });
+}
+
 // ── Main export ──────────────────────────────────────────────────────────────
 
 export async function applyTenantBackground() {
@@ -73,6 +98,8 @@ export async function applyTenantBackground() {
 
     if (config.accent_color) applyAccentColor(config.accent_color);
     if (config.font_family)  applyFont(config.font_family);
+    applyFeatureFlags(config.features);
+    applyStringOverrides(config.strings);
 
     // Pre-load background image before revealing page
     if (bgUrl) {

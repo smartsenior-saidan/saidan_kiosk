@@ -23,4 +23,23 @@
   tenant = tenant || DEFAULT_TENANT;
 
   window.__ENV__ = Object.assign({}, window.__ENV__, { TENANT_ID: tenant });
+
+  // ── Multi-tenant view hooks (additive) ────────────────────────────────────
+  // These run before first paint, so per-tenant styling applies with no flash.
+  // A tenant that defines NO overrides renders identically to the base.
+
+  // 1) Expose the tenant id to CSS for scoped theming, e.g.
+  //    [data-tenant="kodaira-m"] .home-title { ... }
+  try { document.documentElement.setAttribute("data-tenant", tenant); } catch (e) {}
+
+  // 2) Auto-load this tenant's optional theme stylesheet. It loads AFTER
+  //    kiosk.css, so its rules win by cascade. A tenant without a theme file
+  //    404s harmlessly (the link removes itself) and stays on the base look.
+  try {
+    var themeLink = document.createElement("link");
+    themeLink.rel = "stylesheet";
+    themeLink.href = "css/tenants/" + tenant + ".css?v=1";
+    themeLink.onerror = function () { themeLink.remove(); };
+    document.head.appendChild(themeLink);
+  } catch (e) {}
 })();

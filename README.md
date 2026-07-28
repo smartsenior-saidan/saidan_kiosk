@@ -1,1 +1,1 @@
-# Tokyo - Rein, Demo Memorial , Kodaira memorial
+- go to thank you after if nfc card is removed instead of welcome
