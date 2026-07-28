@@ -1,0 +1,9 @@
+/* ==========================================================================
+   Tenant theme — kodaira_memorial (Kodaira Memorial)
+   Filename MUST equal the tenant id (the tenants/{id} doc id + the device's
+   active TENANT_ID) or it won't load. Underscores, not hyphens.
+   --------------------------------------------------------------------------
+   Intentionally empty: kodaira_memorial runs on the base look. Add scoped
+   overrides below (all prefixed with :root[data-tenant="kodaira_memorial"]) if
+   it needs to diverge. See _template.css for the pattern.
+   ========================================================================== */

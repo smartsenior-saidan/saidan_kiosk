@@ -1,0 +1,7 @@
+{
+  "_comment": "Welcome screen text — staff-editable (SRS §5-1). Overrides defaults on next restart.",
+  "welcomeTitle": "東京霊園 納骨堂",
+  "welcomeLead": "ご案内システム",
+  "welcomeGuide": "画面にふれてはじめてください",
+  "welcomeSub": "お名前または区画番号から、ご遺骨の場所をご案内します"
+}

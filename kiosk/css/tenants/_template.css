@@ -1,0 +1,39 @@
+/* ==========================================================================
+   Per-tenant theme TEMPLATE — copy to css/tenants/<tenant_id>.css
+   ==========================================================================
+
+   This file is auto-loaded (by js/config.js) AFTER kiosk.css when the active
+   tenant id matches its filename, so every rule here wins by cascade. It is
+   ALSO scoped by [data-tenant="<id>"] so nothing can leak to other tenants —
+   even if two theme files were somehow loaded at once.
+
+   To onboard a new tenant's look:
+     1. Copy this file to css/tenants/<tenant_id>.css
+     2. Replace <tenant_id> below with the same id.
+     3. Override only what differs. Anything you don't touch stays on the base.
+
+   Cosmetic theming (colors / fonts / background) is usually better set from the
+   tenants/<id> Firestore doc (accent_color, font_family, background image) —
+   that needs no file at all. Use THIS file for structural CSS a tenant needs:
+   spacing, hiding/reordering sections, different type scale, etc.
+   -------------------------------------------------------------------------- */
+
+:root[data-tenant="<tenant_id>"] {
+  /* Override base tokens from css/style.css here, e.g.:
+     --color-accent: #7a5cff;
+     --radius-lg: 28px;
+     --font-primary: "Zen Old Mincho", serif;
+  */
+}
+
+/* Scoped structural overrides — always prefix with the tenant selector: */
+/*
+:root[data-tenant="<tenant_id>"] .home-greeting-main {
+  font-size: clamp(40px, 6vw, 96px);
+}
+*/
+
+/* Feature flags (from tenants/<id>.features) surface as html.feat-<key>.
+   Example — hide the family button unless the tenant enables it:
+:root:not(.feat-family) .fc-btn-family { display: none; }
+*/

@@ -1,0 +1,14 @@
+{
+  "_comment": "Runtime config — editable without rebuild (SRS §7). Loaded at startup.",
+  "idleToWelcomeMs": 180000,
+  "idleToSearchMs": 60000,
+  "resultsWithinMs": 2000,
+  "zoomThreshold": 2.5,
+  "nicheRows": 6,
+  "nicheCols": 12,
+  "sensorKeystroke": null,
+  "assets": {
+    "welcomeBackground": "./assets/welcome/background.jpg",
+    "searchBackground": "./assets/search/background.jpg"
+  }
+}
