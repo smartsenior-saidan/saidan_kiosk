@@ -28,7 +28,7 @@ import {
   personMediaCollection,
   personMediaDoc,
 } from "./firebase.js?v=7";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=39";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=40";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -101,7 +101,12 @@ let entityIds = { family: new Map(), person: new Map() }; // display IDs (KDR-F0
 let currentSection = "dashboard";
 let sortField = "last_name"; // last_name | first_name | death_date | created_at
 let sortDir   = "asc";       // asc | desc
-let selectedRelated = [];   // array of { id, first_name, last_name, kaimyo }
+// Section 4 of the profile form links a person to one 先祖（家） — a doc in the
+// `families` collection — not to individual profiles. `initialFamilyId` is what
+// they belonged to when the form loaded, so a save can tell whether the
+// membership actually changed and leave it alone when it didn't.
+let selectedFamilyId = null;
+let initialFamilyId  = null;
 let familyBuilder = [];     // "New Family" tab: { id, first_name, last_name, kaimyo }
 
 // ── Display helpers ──────────────────────────────────────────────────────────
@@ -890,7 +895,8 @@ function readForm() {
     plot_row: row,
     plot,          // combined for backward-compat display/search
     biography: get("biography"),
-    related_persons: selectedRelated.map((p) => p.id),
+    // related_persons is deliberately absent: syncFamilyMembership() owns it,
+    // and leaving it out of the update keeps pre-existing links intact.
     background_url: bgPreset ? bgPreset.url : null,
     background_path: bgPreset ? bgPreset.path : null,
   };
@@ -909,22 +915,84 @@ function updatePlotPreview() {
 
 // ── Family picker ─────────────────────────────────────────────────────────────
 
+/** Move `personId` out of family `fromId` and into `toId` (either may be null).
+ *  `families.member_ids` is the record of who belongs where; `related_persons`
+ *  is the mutual person-to-person link the kiosk actually reads to offer family
+ *  navigation, so both have to move together.
+ *
+ *  A no-op when the selection didn't change. That matters: profiles created
+ *  before family records existed carry related_persons but belong to no record,
+ *  and rewriting the field on every save would silently dissolve those links. */
+async function syncFamilyMembership(personId, fromId, toId) {
+  if (fromId === toId) return;
+
+  if (fromId) {
+    const peers = familyPeerIds(fromId, personId);
+    await updateDoc(doc(db, COLLECTIONS.families, fromId), {
+      member_ids: arrayRemove(personId),
+      updated_at: serverTimestamp(),
+    });
+    if (peers.length) {
+      await updateDoc(doc(db, COLLECTIONS.persons, personId), {
+        related_persons: arrayRemove(...peers),
+        updated_at: serverTimestamp(),
+      });
+      for (const id of peers) {
+        await updateDoc(doc(db, COLLECTIONS.persons, id), {
+          related_persons: arrayRemove(personId),
+          updated_at: serverTimestamp(),
+        });
+      }
+    }
+  }
+
+  if (toId) {
+    const peers = familyPeerIds(toId, personId);
+    await updateDoc(doc(db, COLLECTIONS.families, toId), {
+      member_ids: arrayUnion(personId),
+      updated_at: serverTimestamp(),
+    });
+    if (peers.length) {
+      await updateDoc(doc(db, COLLECTIONS.persons, personId), {
+        related_persons: arrayUnion(...peers),
+        updated_at: serverTimestamp(),
+      });
+      for (const id of peers) {
+        await updateDoc(doc(db, COLLECTIONS.persons, id), {
+          related_persons: arrayUnion(personId),
+          updated_at: serverTimestamp(),
+        });
+      }
+    }
+  }
+
+  await loadFamilies();
+}
+
+/** Members of a family record, not counting the person being edited. */
+function familyPeerIds(famId, selfId) {
+  const fam = familyRecords.find((f) => f.id === famId);
+  return (fam?.member_ids || []).filter((id) => id && id !== selfId);
+}
+
 function renderFamilySelected() {
   const list = document.getElementById("familySelected");
   if (!list) return;
-  list.innerHTML = selectedRelated.map((p) => `
+  const fam = selectedFamilyId && familyRecords.find((f) => f.id === selectedFamilyId);
+  if (!fam) { list.innerHTML = ""; return; }
+
+  const n = familyPeerIds(fam.id, editingPersonId).length;
+  list.innerHTML = `
     <li class="family-tag">
       <span class="family-tag-text">
-        <span class="family-tag-name">${esc(personName(p))}</span>
-        ${p.kaimyo ? `<span class="family-tag-kaimyo">${esc(p.kaimyo)}</span>` : ""}
+        <span class="family-tag-name">${esc(fam.name || "—")}</span>
+        <span class="family-tag-kaimyo">${esc(t("fam.memberCount", { n }))}</span>
       </span>
-      <button type="button" class="family-tag-remove" data-id="${p.id}" aria-label="Remove">✕</button>
-    </li>`).join("");
-  list.querySelectorAll(".family-tag-remove").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      selectedRelated = selectedRelated.filter((p) => p.id !== btn.dataset.id);
-      renderFamilySelected();
-    });
+      <button type="button" class="family-tag-remove" aria-label="Remove">✕</button>
+    </li>`;
+  list.querySelector(".family-tag-remove")?.addEventListener("click", () => {
+    selectedFamilyId = null;
+    renderFamilySelected();
   });
 }
 
@@ -935,10 +1003,10 @@ function initFamilyPicker() {
 
   let activeIndex = -1; // keyboard-highlighted suggestion
 
+  // One family per person: picking replaces whatever was selected before.
   function pick(id) {
-    const p = allProfiles.find((x) => x.id === id);
-    if (p && !selectedRelated.find((r) => r.id === p.id)) {
-      selectedRelated.push({ id: p.id, first_name: p.first_name, last_name: p.last_name, kaimyo: p.kaimyo || p.posthumous_name || "" });
+    if (familyRecords.some((f) => f.id === id)) {
+      selectedFamilyId = id;
       renderFamilySelected();
     }
     input.value = "";
@@ -957,26 +1025,28 @@ function initFamilyPicker() {
     activeIndex = -1;
     if (!q) { suggestions.classList.add("hidden"); return; }
 
-    // Also match on the posthumous name (kaimyo) — two people can share the
-    // same first + last name, and the kaimyo is what tells them apart when
-    // linking a family, so it's searchable here too.
-    const matches = allProfiles.filter((p) => {
-      if (p.id === editingPersonId) return false;
-      if (selectedRelated.find((r) => r.id === p.id)) return false;
-      return matchesNameQuery(p, q) || matchesKaimyoQuery(p, q);
+    // Families only — this field links the person to a 家, not to individual
+    // profiles. Named records only: a "legacy" grouping has no doc to join.
+    const matches = familyRecords.filter((f) => {
+      if (f.id === selectedFamilyId) return false;
+      return (f.name || "").toLowerCase().includes(q);
     }).slice(0, 6);
 
     if (!matches.length) { suggestions.classList.add("hidden"); return; }
 
-    suggestions.innerHTML = matches.map((p) => {
-      const initials = ((p.last_name || "").charAt(0) + (p.first_name || "").charAt(0)) || "✦";
-      const kaimyo = p.kaimyo || p.posthumous_name || "";
+    suggestions.innerHTML = matches.map((f) => {
+      const n = familyPeerIds(f.id, editingPersonId).length;
+      const names = familyPeerIds(f.id, editingPersonId)
+        .map((id) => personName(allProfiles.find((p) => p.id === id)))
+        .filter(Boolean)
+        .slice(0, 3)
+        .join("、");
       return `
-      <li class="family-suggestion-item" data-id="${p.id}">
-        <span class="suggestion-avatar">${esc(initials)}</span>
+      <li class="family-suggestion-item" data-id="${f.id}">
+        <span class="suggestion-avatar">家</span>
         <span class="suggestion-body">
-          <span class="suggestion-name">${esc(personName(p))}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}</span>
-          ${kaimyo ? `<span class="suggestion-kaimyo">${esc(kaimyo)}</span>` : ""}
+          <span class="suggestion-name">${esc(f.name || "—")} <span class="suggestion-year">${esc(t("fam.memberCount", { n }))}</span></span>
+          ${names ? `<span class="suggestion-kaimyo">${esc(names)}${n > 3 ? " …" : ""}</span>` : ""}
         </span>
       </li>`;
     }).join("");
@@ -1245,21 +1315,9 @@ async function handleSave(e) {
       personId = ref.id;
     }
 
-    // Keep related_persons bidirectional — each linked profile also points back
-    for (const relId of (data.related_persons || [])) {
-      try {
-        const relSnap = await getDoc(doc(db, COLLECTIONS.persons, relId));
-        if (relSnap.exists()) {
-          const existing = relSnap.data().related_persons || [];
-          if (!existing.includes(personId)) {
-            await updateDoc(doc(db, COLLECTIONS.persons, relId), {
-              related_persons: [...existing, personId],
-              updated_at: serverTimestamp(),
-            });
-          }
-        }
-      } catch (e) { console.warn('[admin] bidirectional link failed:', e); }
-    }
+    try {
+      await syncFamilyMembership(personId, initialFamilyId, selectedFamilyId);
+    } catch (e) { console.warn("[admin] family membership sync failed:", e); }
 
     // If a new cover is staged while an old one exists, queue the old one for deletion
     if (stagedCover && existingCover && !removedMediaIds.includes(existingCover.id)) {
@@ -1349,7 +1407,8 @@ function resetForm() {
   renderCoverPreview();
   renderBgPicker();
   editingPerson = null;
-  selectedRelated = [];
+  selectedFamilyId = null;
+  initialFamilyId = null;
   renderFamilySelected();
   const saveBtn = document.getElementById("saveBtn");
   if (saveBtn) saveBtn.textContent = t("btn.saveProfile");
@@ -1382,11 +1441,10 @@ async function loadForEdit(person) {
   selectedBgPath = person.background_path || null;
   renderBgPicker();
 
-  // Restore family links
-  selectedRelated = (person.related_persons || [])
-    .map((id) => allProfiles.find((p) => p.id === id))
-    .filter(Boolean)
-    .map((p) => ({ id: p.id, first_name: p.first_name, last_name: p.last_name, kaimyo: p.kaimyo || p.posthumous_name || "" }));
+  // Show the 家 this person already belongs to, if any.
+  const fam = familyRecords.find((f) => (f.member_ids || []).includes(person.id));
+  selectedFamilyId = fam ? fam.id : null;
+  initialFamilyId  = selectedFamilyId;
   renderFamilySelected();
 
   // Reset media state
