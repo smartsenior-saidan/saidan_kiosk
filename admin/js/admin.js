@@ -28,7 +28,7 @@ import {
   personMediaCollection,
   personMediaDoc,
 } from "./firebase.js?v=7";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=35";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=38";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -581,7 +581,7 @@ function wireFamilyAddPicker(famKey, existingMembers) {
       <li class="family-suggestion-item" data-id="${p.id}">
         <span class="suggestion-avatar">${esc(initials)}</span>
         <span class="suggestion-body">
-          <span class="suggestion-name">${esc(p.first_name)} ${esc(p.last_name)}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}</span>
+          <span class="suggestion-name">${esc(p.last_name)} ${esc(p.first_name)}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}</span>
           ${kaimyo ? `<span class="suggestion-kaimyo">${esc(kaimyo)}</span>` : ""}
         </span>
       </li>`;
@@ -904,7 +904,7 @@ function renderFamilySelected() {
   list.innerHTML = selectedRelated.map((p) => `
     <li class="family-tag">
       <span class="family-tag-text">
-        <span class="family-tag-name">${esc(p.first_name)} ${esc(p.last_name)}</span>
+        <span class="family-tag-name">${esc(p.last_name)} ${esc(p.first_name)}</span>
         ${p.kaimyo ? `<span class="family-tag-kaimyo">${esc(p.kaimyo)}</span>` : ""}
       </span>
       <button type="button" class="family-tag-remove" data-id="${p.id}" aria-label="Remove">✕</button>
@@ -964,7 +964,7 @@ function initFamilyPicker() {
       <li class="family-suggestion-item" data-id="${p.id}">
         <span class="suggestion-avatar">${esc(initials)}</span>
         <span class="suggestion-body">
-          <span class="suggestion-name">${esc(p.first_name)} ${esc(p.last_name)}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}</span>
+          <span class="suggestion-name">${esc(p.last_name)} ${esc(p.first_name)}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}</span>
           ${kaimyo ? `<span class="suggestion-kaimyo">${esc(kaimyo)}</span>` : ""}
         </span>
       </li>`;
@@ -1025,7 +1025,7 @@ function renderFamilyBuilder() {
   list.innerHTML = familyBuilder.map((p) => `
     <li class="family-tag">
       <span class="family-tag-text">
-        <span class="family-tag-name">${esc(p.first_name)} ${esc(p.last_name)}</span>
+        <span class="family-tag-name">${esc(p.last_name)} ${esc(p.first_name)}</span>
         ${p.kaimyo ? `<span class="family-tag-kaimyo">${esc(p.kaimyo)}</span>` : ""}
       </span>
       <button type="button" class="family-tag-remove" data-id="${p.id}" aria-label="Remove">✕</button>
@@ -1094,7 +1094,7 @@ function initFamilyBuilder() {
       <li class="family-suggestion-item" data-id="${p.id}">
         <span class="suggestion-avatar">${esc(initials)}</span>
         <span class="suggestion-body">
-          <span class="suggestion-name">${esc(p.first_name)} ${esc(p.last_name)}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}${inFamily}</span>
+          <span class="suggestion-name">${esc(p.last_name)} ${esc(p.first_name)}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}${inFamily}</span>
           ${kaimyo ? `<span class="suggestion-kaimyo">${esc(kaimyo)}</span>` : ""}
         </span>
       </li>`;
