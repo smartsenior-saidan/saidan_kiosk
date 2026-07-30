@@ -15,6 +15,8 @@ import {
   sendPasswordResetEmail,
   onAuthStateChanged,
   signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore,
@@ -94,7 +96,14 @@ setPersistence(auth, browserSessionPersistence).catch((err) =>
   console.warn("[admin] failed to set auth persistence:", err)
 );
 
-export { signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut };
+export {
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  onAuthStateChanged,
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
+};
 
 // Collection name constants (single source of truth).
 export const COLLECTIONS = {

@@ -27,7 +27,7 @@ import {
   TENANT_ID,
   personMediaCollection,
   personMediaDoc,
-} from "./firebase.js?v=7";
+} from "./firebase.js?v=8";
 import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=40";
 
 // ── State ───────────────────────────────────────────────────────────────────
