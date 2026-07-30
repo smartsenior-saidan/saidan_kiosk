@@ -28,7 +28,7 @@ import {
   personMediaCollection,
   personMediaDoc,
 } from "./firebase.js?v=7";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=38";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=39";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -104,12 +104,23 @@ let sortDir   = "asc";       // asc | desc
 let selectedRelated = [];   // array of { id, first_name, last_name, kaimyo }
 let familyBuilder = [];     // "New Family" tab: { id, first_name, last_name, kaimyo }
 
+// ── Display helpers ──────────────────────────────────────────────────────────
+
+/** A person's display name in Japanese order (姓 名). This is the one place
+ *  the order is decided — lists, chips, page titles and toasts all go through
+ *  it, so they can't drift apart again. Missing halves are dropped rather than
+ *  leaving a stray space. */
+function personName(p) {
+  if (!p) return "";
+  return [p.last_name, p.first_name].filter(Boolean).join(" ").trim();
+}
+
 // ── Section navigation ───────────────────────────────────────────────────────
 
 /** Page title for the current section — "Edit — {name}" while editing, else the section label. */
 function currentPageTitle() {
   if (currentSection === "new-profile" && editingPersonId && editingPerson) {
-    return t("formTitle.edit", { name: `${editingPerson.first_name} ${editingPerson.last_name}` });
+    return t("formTitle.edit", { name: personName(editingPerson) });
   }
   return t(`section.${currentSection}`);
 }
@@ -581,7 +592,7 @@ function wireFamilyAddPicker(famKey, existingMembers) {
       <li class="family-suggestion-item" data-id="${p.id}">
         <span class="suggestion-avatar">${esc(initials)}</span>
         <span class="suggestion-body">
-          <span class="suggestion-name">${esc(p.last_name)} ${esc(p.first_name)}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}</span>
+          <span class="suggestion-name">${esc(personName(p))}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}</span>
           ${kaimyo ? `<span class="suggestion-kaimyo">${esc(kaimyo)}</span>` : ""}
         </span>
       </li>`;
@@ -654,7 +665,7 @@ async function addMemberToFamily(key, personId) {
     selectedFamilyKey = `rec:${recordId}`; // legacy families get a new key once promoted
     renderFamilySection();
     updateSearchTabCounts();
-    setStatus(t("status.memberAdded", { name: `${person.last_name || ""}${person.first_name || ""}`.trim() }), "success");
+    setStatus(t("status.memberAdded", { name: personName(person) }), "success");
   } catch (err) {
     console.error("[admin] add member failed:", err);
     setStatus(t("status.saveFailed", { msg: err.message }), "error");
@@ -774,7 +785,7 @@ function profileRow(p, full = false) {
       <td>
         <div class="avatar-cell">
           <div class="avatar">${esc(initials)}</div>
-          <div class="profile-name">${esc(p.last_name || "")} ${esc(p.first_name || "")}</div>
+          <div class="profile-name">${esc(personName(p))}</div>
         </div>
       </td>
       <td>${esc(birth)} – ${esc(death)}</td>
@@ -814,7 +825,7 @@ function showQrModal(person) {
   const url = `https://kiosk.saidans.org/${page}?person=${encodeURIComponent(person.id)}&site=${encodeURIComponent(tenantId)}`;
   const label = hasFamily
     ? (person.last_name ? `${person.last_name}家` : (person.first_name || 'Family'))
-    : `${person.last_name || ''} ${person.first_name || ''}`.trim();
+    : personName(person);
 
   document.getElementById('qrModalTitle').textContent = hasFamily ? t('qr.familyTitle') : t('qr.profileTitle');
   document.getElementById('qrFamilyLabel').textContent = label;
@@ -904,7 +915,7 @@ function renderFamilySelected() {
   list.innerHTML = selectedRelated.map((p) => `
     <li class="family-tag">
       <span class="family-tag-text">
-        <span class="family-tag-name">${esc(p.last_name)} ${esc(p.first_name)}</span>
+        <span class="family-tag-name">${esc(personName(p))}</span>
         ${p.kaimyo ? `<span class="family-tag-kaimyo">${esc(p.kaimyo)}</span>` : ""}
       </span>
       <button type="button" class="family-tag-remove" data-id="${p.id}" aria-label="Remove">✕</button>
@@ -964,7 +975,7 @@ function initFamilyPicker() {
       <li class="family-suggestion-item" data-id="${p.id}">
         <span class="suggestion-avatar">${esc(initials)}</span>
         <span class="suggestion-body">
-          <span class="suggestion-name">${esc(p.last_name)} ${esc(p.first_name)}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}</span>
+          <span class="suggestion-name">${esc(personName(p))}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}</span>
           ${kaimyo ? `<span class="suggestion-kaimyo">${esc(kaimyo)}</span>` : ""}
         </span>
       </li>`;
@@ -1025,7 +1036,7 @@ function renderFamilyBuilder() {
   list.innerHTML = familyBuilder.map((p) => `
     <li class="family-tag">
       <span class="family-tag-text">
-        <span class="family-tag-name">${esc(p.last_name)} ${esc(p.first_name)}</span>
+        <span class="family-tag-name">${esc(personName(p))}</span>
         ${p.kaimyo ? `<span class="family-tag-kaimyo">${esc(p.kaimyo)}</span>` : ""}
       </span>
       <button type="button" class="family-tag-remove" data-id="${p.id}" aria-label="Remove">✕</button>
@@ -1063,7 +1074,7 @@ function addToFamilyBuilder(id) {
   }
   renderFamilyBuilder();
   if (pulled) {
-    const name = `${p.last_name || ""}${p.first_name || ""}`.trim() || "—";
+    const name = personName(p) || "—";
     setStatus(t("nf.pulledIn", { name, n: pulled }), "info");
   }
 }
@@ -1094,7 +1105,7 @@ function initFamilyBuilder() {
       <li class="family-suggestion-item" data-id="${p.id}">
         <span class="suggestion-avatar">${esc(initials)}</span>
         <span class="suggestion-body">
-          <span class="suggestion-name">${esc(p.last_name)} ${esc(p.first_name)}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}${inFamily}</span>
+          <span class="suggestion-name">${esc(personName(p))}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}${inFamily}</span>
           ${kaimyo ? `<span class="suggestion-kaimyo">${esc(kaimyo)}</span>` : ""}
         </span>
       </li>`;
@@ -1297,7 +1308,7 @@ async function handleSave(e) {
       setProgress(100);
     }
 
-    const savedName = `${data.first_name} ${data.last_name}`;
+    const savedName = personName(data);
     if (missing.length) {
       setStatus(t("status.savedWithWarning", { name: savedName, warnings: missing.join(" ") }), "warning");
     } else {
@@ -1406,7 +1417,7 @@ async function loadForEdit(person) {
     console.warn("[admin] loadForEdit media failed:", err);
   }
 
-  const name = `${person.first_name} ${person.last_name}`;
+  const name = personName(person);
   const saveBtn = document.getElementById("saveBtn");
   if (saveBtn) saveBtn.textContent = t("btn.updateProfile");
   const formTitle = document.getElementById("formTitle");
@@ -1453,7 +1464,7 @@ function confirmDialog({ title, body, confirmLabel, danger = true }) {
 }
 
 async function deleteProfile(person) {
-  const name = `${person.first_name} ${person.last_name}`;
+  const name = personName(person);
   const ok = await confirmDialog({
     title: t("confirm.deleteTitle"),
     body: t("confirm.delete", { name }),
@@ -1502,7 +1513,7 @@ async function deleteProfile(person) {
   // Always delete the person document.
   try {
     await deleteDoc(doc(db, COLLECTIONS.persons, person.id));
-    setStatus(t("status.deletedToast", { name: `${person.first_name} ${person.last_name}` }), "success");
+    setStatus(t("status.deletedToast", { name: personName(person) }), "success");
     allProfiles = allProfiles.filter((p) => p.id !== person.id);
     dashboardPersons = dashboardPersons.filter((p) => p.id !== person.id);
     // Mirror the link cleanup in-memory so the family/individual views are
@@ -1748,7 +1759,7 @@ function retranslateDynamic() {
   const formTitle = document.getElementById("formTitle");
   if (formTitle) {
     formTitle.textContent = editingPerson
-      ? t("formTitle.edit", { name: `${editingPerson.first_name} ${editingPerson.last_name}` })
+      ? t("formTitle.edit", { name: personName(editingPerson) })
       : t("formTitle.new");
   }
 
