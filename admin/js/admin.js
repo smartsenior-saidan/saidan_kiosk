@@ -28,7 +28,7 @@ import {
   personMediaCollection,
   personMediaDoc,
 } from "./firebase.js?v=7";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=30";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=35";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -187,6 +187,7 @@ const TOAST_ICONS = {
   info:    '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>',
   success: '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>',
   error:   '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a1 1 0 00-1 1v4a1 1 0 002 0V6a1 1 0 00-1-1zm0 10a1.25 1.25 0 100-2.5 1.25 1.25 0 000 2.5z" clip-rule="evenodd"/></svg>',
+  warning: '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>',
 };
 
 function setStatus(msg, kind = "info") {
@@ -1193,8 +1194,27 @@ async function handleSave(e) {
   clearFormStatus();
 
   const data = readForm();
+  const isEditing = Boolean(editingPersonId);
+
+  // The name is required in both modes — a profile without one can't be listed
+  // or displayed on the kiosk at all.
   if (!data.first_name || !data.last_name) {
     setFormStatus(t("status.nameRequired"), "error");
+    return;
+  }
+
+  // Kana and cover photo block a *new* profile but only warn when editing an
+  // existing one: profiles created before these became required must stay
+  // editable, and the warning tells the admin what's still missing. The cover
+  // isn't an <input> (it's a dropzone), so the browser can't enforce it here —
+  // an already-stored cover counts as present. The background stays optional
+  // in both modes: an unset per-person background falls back to the
+  // tenant-wide one on the kiosk.
+  const missing = [];
+  if (!data.first_name_kana || !data.last_name_kana) missing.push(t("status.kanaRequired"));
+  if (!stagedCover && !existingCover) missing.push(t("status.coverRequired"));
+  if (missing.length && !isEditing) {
+    setFormStatus(missing.join(" "), "error");
     return;
   }
 
@@ -1277,7 +1297,12 @@ async function handleSave(e) {
       setProgress(100);
     }
 
-    setStatus(t("status.savedToast", { name: `${data.first_name} ${data.last_name}` }), "success");
+    const savedName = `${data.first_name} ${data.last_name}`;
+    if (missing.length) {
+      setStatus(t("status.savedWithWarning", { name: savedName, warnings: missing.join(" ") }), "warning");
+    } else {
+      setStatus(t("status.savedToast", { name: savedName }), "success");
+    }
     resetForm();
     showSection("dashboard");
   } catch (err) {
@@ -1289,9 +1314,18 @@ async function handleSave(e) {
   }
 }
 
+/** Kana is only enforced by the browser on a new profile — see handleSave. */
+function setKanaRequired(on) {
+  ["firstNameKana", "lastNameKana"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.required = on;
+  });
+}
+
 function resetForm() {
   const form = document.getElementById("profileForm");
   if (form) form.reset();
+  setKanaRequired(true);
   stagedFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl));
   stagedFiles = [];
   if (stagedCover) { URL.revokeObjectURL(stagedCover.previewUrl); stagedCover = null; }
@@ -1317,6 +1351,7 @@ function resetForm() {
 async function loadForEdit(person) {
   editingPersonId = person.id;
   editingPerson = person;
+  setKanaRequired(false);
   const set = (id, val) => {
     const el = document.getElementById(id);
     if (el) el.value = val || "";

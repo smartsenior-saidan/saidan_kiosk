@@ -242,6 +242,7 @@
 .toast.info    .toast-icon { color: var(--color-accent); }
 .toast.success .toast-icon { color: var(--color-success); }
 .toast.error   .toast-icon { color: var(--color-danger); }
+.toast.warning .toast-icon { color: var(--color-warning); }
 
 /* Language switch (EN / 日本語) */
 .lang-switch {
@@ -849,6 +850,7 @@ tr[data-key]:hover .drill-chevron {
 .form-status.info    { background: var(--color-accent-soft);  color: var(--color-accent-dark); border: 1px solid rgba(63, 66, 71, 0.2); }
 .form-status.success { background: var(--color-success-soft); color: #157A40; border: 1px solid rgba(27, 158, 82, 0.3); }
 .form-status.error   { background: var(--color-danger-soft);  color: #C0362D; border: 1px solid rgba(220, 61, 51, 0.3); }
+.form-status.warning { background: var(--color-warning-soft); color: #9A5C00; border: 1px solid rgba(199, 119, 0, 0.3); }
 
 /* Sticky save bar — always reachable at the bottom of a long form */
 .form-actions {

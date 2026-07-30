@@ -20,6 +20,8 @@
   --color-danger-soft: rgba(220, 61, 51, 0.08);
   --color-success:     #1B9E52;
   --color-success-soft: rgba(27, 158, 82, 0.1);
+  --color-warning:     #C77700;
+  --color-warning-soft: rgba(199, 119, 0, 0.1);
 
   --hover-surface: rgba(23, 26, 31, 0.045);  /* generic hover tint (buttons, controls) */
   --hover-row:     rgba(23, 26, 31, 0.025);  /* table row hover */

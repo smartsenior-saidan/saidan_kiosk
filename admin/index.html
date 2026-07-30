@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
-    <link rel="stylesheet" href="css/style.css?v=9" />
-    <link rel="stylesheet" href="css/admin.css?v=20" />
+    <link rel="stylesheet" href="css/style.css?v=10" />
+    <link rel="stylesheet" href="css/admin.css?v=21" />
   </head>
   <body>
     <div class="app-shell">
@@ -108,7 +108,7 @@
             <div class="form-layout">
 
               <div class="card">
-                <h3 class="card-title" id="formTitle">New Profile</h3>
+                <h3 class="card-title" id="formTitle" data-i18n="formTitle.new">New Profile</h3>
                 <div id="formStatus" class="form-status hidden"></div>
 
                 <form id="profileForm">
@@ -122,23 +122,23 @@
 
                     <div class="form-row">
                       <div class="field">
-                        <label for="firstName" data-i18n="form.firstName">First name *</label>
-                        <input id="firstName" type="text" required />
-                      </div>
-                      <div class="field">
                         <label for="lastName" data-i18n="form.lastName">Last name *</label>
                         <input id="lastName" type="text" required />
+                      </div>
+                      <div class="field">
+                        <label for="firstName" data-i18n="form.firstName">First name *</label>
+                        <input id="firstName" type="text" required />
                       </div>
                     </div>
 
                     <div class="form-row">
                       <div class="field">
-                        <label for="firstNameKana" data-i18n="form.firstNameKana">First name (hiragana)</label>
-                        <input id="firstNameKana" type="text" placeholder="はなこ" data-i18n-ph="ph.firstNameKana" />
+                        <label for="lastNameKana" data-i18n="form.lastNameKana">Last name (hiragana)</label>
+                        <input id="lastNameKana" type="text" required placeholder="やまだ" data-i18n-ph="ph.lastNameKana" />
                       </div>
                       <div class="field">
-                        <label for="lastNameKana" data-i18n="form.lastNameKana">Last name (hiragana)</label>
-                        <input id="lastNameKana" type="text" placeholder="やまだ" data-i18n-ph="ph.lastNameKana" />
+                        <label for="firstNameKana" data-i18n="form.firstNameKana">First name (hiragana)</label>
+                        <input id="firstNameKana" type="text" required placeholder="はなこ" data-i18n-ph="ph.firstNameKana" />
                       </div>
                     </div>
                     <p class="field-hint" data-i18n="hint.nameKana">Hiragana readings let guests search by kana even if they don't know the kanji.</p>
@@ -200,7 +200,7 @@
 
                     <div class="field">
                       <label for="biography" data-i18n="form.biography">Biography</label>
-                      <textarea id="biography" placeholder="Share their life story, memories, and legacy…" data-i18n-ph="ph.biography"></textarea>
+                      <textarea id="biography" maxlength="100" placeholder="Share their life story, memories, and legacy…" data-i18n-ph="ph.biography"></textarea>
                     </div>
                   </div>
 
@@ -336,7 +336,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=50";
+      import { initAdminPortal } from "./js/admin.js?v=55";
       initAdminPortal();
     </script>
   </body>
