@@ -35,9 +35,19 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // True when the signed-in user belongs to tenant `t`.
+    // SmartSenior staff who administer every memorial site. Marked by
+    // role == "super" on their /admins record — the same record that carries
+    // tenant_id, so there is still exactly one place that grants access.
+    function isSuperAdmin() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == "super";
+    }
+
+    // True when the signed-in user may write to tenant `t`: either it's their
+    // own site, or they're a super admin. Read from /admins on every write, so
+    // revoking someone takes effect immediately and a tampered client can't
+    // claim either status.
     function ownsTenant(t) {
-      return userExists() && userTenant() == t;
+      return userExists() && (userTenant() == t || isSuperAdmin());
     }
 
     // ── Staff accounts ──────────────────────────────────────────────────────

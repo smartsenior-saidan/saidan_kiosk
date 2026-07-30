@@ -25,10 +25,11 @@ import {
   deleteObject,
   COLLECTIONS,
   TENANT_ID,
+  ROLE,
   personMediaCollection,
   personMediaDoc,
 } from "./firebase.js?v=8";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=40";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=41";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -110,6 +111,41 @@ let initialFamilyId  = null;
 let familyBuilder = [];     // "New Family" tab: { id, first_name, last_name, kaimyo }
 
 // ── Display helpers ──────────────────────────────────────────────────────────
+
+/** Swap the top-bar site label for a picker listing every memorial site.
+ *  Super admins only — everyone else stays pinned to their own tenant.
+ *
+ *  TENANT_ID is read once at module load and threaded through every query and
+ *  every withTenant() stamp, so switching stores the choice and reloads rather
+ *  than trying to re-point live state at another site — a half-switched page
+ *  could stamp new records with the wrong tenant. */
+async function initSiteSwitcher(siteEl) {
+  try {
+    const snap = await getDocs(collection(db, COLLECTIONS.tenants));
+    const tenants = snap.docs
+      .map((d) => ({ id: d.id, name: (d.data().name || "").trim() || d.id }))
+      .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+    if (!tenants.length) return;
+
+    const sel = document.createElement("select");
+    sel.className = "page-site page-site-switch";
+    sel.id = "pageSite";
+    sel.title = t("tenant.switch");
+    sel.setAttribute("aria-label", t("tenant.switch"));
+    sel.innerHTML = tenants
+      .map((tn) => `<option value="${esc(tn.id)}"${tn.id === TENANT_ID ? " selected" : ""}>${esc(tn.name)}</option>`)
+      .join("");
+
+    sel.addEventListener("change", () => {
+      sessionStorage.setItem("ss_tenant_id", sel.value);
+      window.location.reload();
+    });
+
+    siteEl.replaceWith(sel);
+  } catch (err) {
+    console.warn("[admin] tenant switcher unavailable:", err);
+  }
+}
 
 /** A person's display name in Japanese order (姓 名). This is the one place
  *  the order is decided — lists, chips, page titles and toasts all go through
@@ -1867,7 +1903,10 @@ export function initAdminPortal() {
     .trim() || "—";
 
   const siteEl = document.getElementById("pageSite");
-  if (siteEl) {
+  if (siteEl && ROLE === "super") {
+    // A super admin isn't pinned to one site, so the label becomes a picker.
+    initSiteSwitcher(siteEl);
+  } else if (siteEl) {
     siteEl.textContent = prettySite;
     siteEl.title = TENANT_ID;
     getDoc(doc(db, COLLECTIONS.tenants, TENANT_ID))
