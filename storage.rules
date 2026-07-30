@@ -19,8 +19,17 @@ service firebase.storage {
       return firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.tenant_id;
     }
 
+    // Mirrors firestore.rules' isSuperAdmin() — SmartSenior staff who
+    // administer every memorial site, marked by role == "super" on their
+    // /admins record. Both rule files have to agree: a super admin whose
+    // Firestore write is allowed but whose photo upload is denied leaves a
+    // profile saved with its media missing.
+    function isSuperAdmin() {
+      return firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.role == "super";
+    }
+
     function ownsTenant(t) {
-      return userExists() && userTenant() == t;
+      return userExists() && (userTenant() == t || isSuperAdmin());
     }
 
     // Per-tenant memorial media.
