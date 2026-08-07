@@ -1,0 +1,73 @@
+# Deploys the Firestore and Storage security rules.
+#
+# The site itself is served by Cloudflare Pages, which builds on every push to
+# main. The rules are not part of that — they live in Firebase and used to be
+# pushed by hand with `firebase deploy`. That left the security boundary able to
+# drift silently: a rules change could sit merged and un-deployed with a green
+# build next to it, and a deploy run from a stale checkout could revert someone
+# else's change without either person noticing.
+#
+# So push is now the only path for both. This runs only when the rules files
+# themselves change, which keeps failure mail meaningful.
+#
+# Requires the repository secret FIREBASE_SERVICE_ACCOUNT — the JSON key of a
+# service account holding Firebase Rules Admin on smartsenior-kiosk. It needs no
+# data access: this workflow never reads or writes Firestore documents.
+
+name: Deploy Firebase rules
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - firestore.rules
+      - storage.rules
+      - firestore.indexes.json
+      - firebase.json
+      - .github/workflows/deploy-rules.yml
+  # Lets you re-run a deploy from the Actions tab without an empty commit —
+  # useful if a run failed on a transient error.
+  workflow_dispatch:
+
+concurrency:
+  # Never let two deploys race; a later push should win rather than interleave.
+  group: firebase-rules
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@15
+
+      - name: Write service account key
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT secret is not set. See the header of this workflow."
+            exit 1
+          fi
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+
+      # Compiles the rules without releasing them. A syntax error fails here,
+      # before anything reaches production.
+      - name: Validate
+        run: firebase deploy --only firestore:rules,storage --project smartsenior-kiosk --dry-run
+
+      - name: Deploy
+        run: firebase deploy --only firestore:rules,storage --project smartsenior-kiosk --non-interactive
+
+      - name: Remove key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
