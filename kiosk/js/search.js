@@ -7,9 +7,8 @@
 
 import {
   getDocs,
-  tenantQuery,
-  COLLECTIONS,
-} from "./firebase.js?v=1";
+  personsCollection,
+} from "./firebase.js?v=2";
 
 // --- Fuzzy matching utilities ----------------------------------------------
 
@@ -204,7 +203,7 @@ let _personCache = null;
 export async function loadPersons(forceRefresh = false) {
   if (_personCache && !forceRefresh) return _personCache;
 
-  const snap = await getDocs(tenantQuery(COLLECTIONS.persons));
+  const snap = await getDocs(personsCollection());
   _personCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   return _personCache;
 }
@@ -214,12 +213,12 @@ export async function loadPersons(forceRefresh = false) {
 // Key a person by their kana reading for あいうえお ordering (surname, then
 // given name). Falls back to the kanji name when a reading isn't recorded, so
 // incomplete records still sort somewhere sensible rather than jumping around.
-// The   separator keeps a shorter surname sorting before a longer one that
+// The \0 separator keeps a shorter surname sorting before a longer one that
 // starts with the same characters (やま before やまだ).
 function readingKey(p) {
   const last = foldKana((p.last_name_kana || p.last_name || "").trim());
   const first = foldKana((p.first_name_kana || p.first_name || "").trim());
-  return `${last} ${first}`;
+  return `${last}\0${first}`;
 }
 
 /**

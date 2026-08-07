@@ -4,19 +4,21 @@ rules_version = '2';
 //
 // Tenant isolation model:
 //   • Each staff login has an /admins/{uid} doc holding their `tenant_id`.
-//   • Admin writes are allowed ONLY when the document's tenant_id matches the
-//     signed-in user's tenant_id (read live from /admins, never trusted from
-//     the client). This is what actually splits the database per memorial site.
-//   • Memorial content (individuals, media, families) is publicly READABLE
-//     because the visitor-facing kiosk runs without authentication. Each kiosk
-//     is pinned to one tenant at the query level, but reads themselves are open.
+//   • Memorial content lives under its tenant — tenants/{tid}/individuals/{id},
+//     tenants/{tid}/families/{id} — so the PATH decides which site a record
+//     belongs to. A write is allowed only when the caller owns the tenant named
+//     in the path, read live from /admins and never trusted from the client.
+//   • Memorial content is publicly READABLE because the visitor-facing kiosk
+//     runs without authentication. Each kiosk is pinned to one tenant by the
+//     path it reads, but reads themselves are open.
 //
-// NOTE (collection rename migration): the collections were renamed
-//   users → admins, deceased_persons → deceased_individuals, families → deceased_families.
-// The OLD-name blocks below are TRANSITIONAL — they keep any not-yet-redeployed
-// code working during the migration. Delete the blocks marked "REMOVE AFTER
-// MIGRATION" once every kiosk/admin is on the new code and the old collections
-// have been deleted.
+// /admins stays top-level: its document ID is the Firebase Auth UID, and these
+// rules look it up by request.auth.uid to discover which tenant the caller
+// belongs to — so it cannot itself live behind a tenant.
+//
+// MIGRATION IN PROGRESS: the flat deceased_individuals / deceased_families
+// collections are still present and still permitted, below. See the block there
+// for what has to be true before they can be deleted.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -56,61 +58,71 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ── Memorial profiles (individuals) ─────────────────────────────────────
-    match /deceased_individuals/{personId} {
-      allow read:          if true;                                   // public kiosk
-      allow create:        if ownsTenant(request.resource.data.tenant_id);
-      allow update, delete: if ownsTenant(resource.data.tenant_id);
-
-      match /media/{mediaId} {
-        allow read:          if true;                                 // public kiosk
-        allow create:        if ownsTenant(request.resource.data.tenant_id);
-        allow update, delete: if ownsTenant(resource.data.tenant_id);
-      }
-    }
-
-    // ── Family groups (admin-created, named; may have zero members) ─────────
-    match /deceased_families/{familyId} {
-      allow read:          if true;                                   // public kiosk (future use)
-      allow create:        if ownsTenant(request.resource.data.tenant_id);
-      allow update, delete: if ownsTenant(resource.data.tenant_id);
-    }
-
-    // ── Tenant configuration ────────────────────────────────────────────────
+    // ── Tenant configuration + all memorial content ─────────────────────────
+    // Memorial records live UNDER their tenant: tenants/{tid}/individuals/{id}.
+    //
+    // The path segment is what grants the write, not a field in the document
+    // body — so a record cannot be written into a tenant the caller doesn't
+    // own no matter what its `tenant_id` says. The old flat rules below had to
+    // compare request.resource.data.tenant_id on create and resource.data on
+    // update, which meant a bug that stamped the wrong tenant_id could file a
+    // record at the wrong memorial site and the rules would allow it. Nesting
+    // makes that class of bug unrepresentable, which is why create/update/delete
+    // collapse back into a single `write` here.
     match /tenants/{tenantId} {
       allow read:  if true;   // kiosk reads accent_color, bgm_path, name
       allow write: if false;  // managed via Firebase console / admin SDK only
+
+      match /individuals/{personId} {
+        allow read:  if true;                    // public kiosk
+        allow write: if ownsTenant(tenantId);
+
+        match /media/{mediaId} {
+          allow read:  if true;                  // public kiosk
+          allow write: if ownsTenant(tenantId);
+        }
+      }
+
+      match /families/{familyId} {
+        allow read:  if true;                    // public kiosk
+        allow write: if ownsTenant(tenantId);
+      }
     }
 
-    // ── Kiosk devices ───────────────────────────────────────────────────────
-    match /kiosk_devices/{id} {
-      allow read:  if true;
-      allow write: if false;
-    }
-
-    // ══ TRANSITIONAL — REMOVE AFTER MIGRATION ════════════════════════════════
-    // Old collection names, kept readable/writable so code that hasn't been
-    // redeployed yet keeps working while data is copied to the new names.
-    match /users/{uid} {
-      allow read:  if isSignedIn() && request.auth.uid == uid;
-      allow write: if false;
-    }
-    match /deceased_persons/{personId} {
+    // ══ MIGRATION — the pre-nesting flat collections ═════════════════════════
+    // Still populated: scripts/nest-under-tenants.js COPIES into the nested
+    // paths above and deliberately leaves these untouched, so both locations
+    // hold the same records during the switchover and a rollback is a code
+    // revert rather than a restore.
+    //
+    // REMOVE these three blocks, and delete the collections, once (a) the kiosk
+    // and admin are deployed on the nested paths, and (b) the columbarium's
+    // config.json `collection` is repointed at tenants/{tid}/individuals.
+    // Until (b), the columbarium still reads deceased_individuals.
+    match /deceased_individuals/{personId} {
       allow read:          if true;
       allow create:        if ownsTenant(request.resource.data.tenant_id);
       allow update, delete: if ownsTenant(resource.data.tenant_id);
+
       match /media/{mediaId} {
         allow read:          if true;
         allow create:        if ownsTenant(request.resource.data.tenant_id);
         allow update, delete: if ownsTenant(resource.data.tenant_id);
       }
     }
-    match /families/{familyId} {
+
+    match /deceased_families/{familyId} {
       allow read:          if true;
       allow create:        if ownsTenant(request.resource.data.tenant_id);
       allow update, delete: if ownsTenant(resource.data.tenant_id);
     }
-    // ══ END TRANSITIONAL ═════════════════════════════════════════════════════
+    // ══ END MIGRATION ════════════════════════════════════════════════════════
+
+    // ── Kiosk devices ───────────────────────────────────────────────────────
+    match /kiosk_devices/{id} {
+      allow read:  if true;
+      allow write: if false;
+    }
 
     // Everything else: deny.
     match /{document=**} {

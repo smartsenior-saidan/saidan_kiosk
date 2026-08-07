@@ -13,8 +13,10 @@ import {
   deleteDoc,
   getDocs,
   collection,
-  where,
-  tenantQuery,
+  personsCollection,
+  personDoc,
+  familiesCollection,
+  familyDoc,
   withTenant,
   serverTimestamp,
   arrayRemove,
@@ -218,7 +220,7 @@ window.addEventListener("popstate", async (e) => {
     let person = allProfiles.find((p) => p.id === state.personId);
     if (!person) {
       try {
-        const snap = await getDoc(doc(db, COLLECTIONS.persons, state.personId));
+        const snap = await getDoc(personDoc(state.personId));
         if (snap.exists()) person = { id: snap.id, ...snap.data() };
       } catch (err) { console.warn("[admin] history restore failed:", err); }
     }
@@ -306,7 +308,7 @@ function updateSearchTabCounts() {
 
 async function loadSearchData() {
   try {
-    const snap = await getDocs(tenantQuery(COLLECTIONS.persons));
+    const snap = await getDocs(personsCollection());
     allProfiles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     dashboardPersons = allProfiles;
     await loadFamilies();
@@ -325,7 +327,7 @@ async function loadSearchData() {
 // degrade gracefully to an empty list rather than breaking the page.
 async function loadFamilies() {
   try {
-    const snap = await getDocs(tenantQuery(COLLECTIONS.families));
+    const snap = await getDocs(familiesCollection());
     familyRecords = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     // Oldest first so each family keeps a stable F-number as new ones are added.
     familyRecords.sort((a, b) => (a.created_at?.seconds ?? 0) - (b.created_at?.seconds ?? 0));
@@ -566,7 +568,7 @@ async function deleteFamily(key) {
   setStatus(t("status.deleting"), "info");
   try {
     if (key.startsWith("rec:")) {
-      await deleteDoc(doc(db, COLLECTIONS.families, key.slice(4)));
+      await deleteDoc(familyDoc(key.slice(4)));
     }
 
     // Dissolve the clique — remove only the links pointing at other members of
@@ -575,7 +577,7 @@ async function deleteFamily(key) {
     for (const m of fam.members) {
       const remaining = (m.related_persons || []).filter((id) => !memberIds.includes(id));
       if (remaining.length !== (m.related_persons || []).length) {
-        await updateDoc(doc(db, COLLECTIONS.persons, m.id), {
+        await updateDoc(personDoc(m.id), {
           related_persons: remaining,
           updated_at: serverTimestamp(),
         });
@@ -672,12 +674,12 @@ async function addMemberToFamily(key, personId) {
     let recordId = key.startsWith("rec:") ? key.slice(4) : null;
 
     if (recordId) {
-      await updateDoc(doc(db, COLLECTIONS.families, recordId), {
+      await updateDoc(familyDoc(recordId), {
         member_ids: arrayUnion(personId),
         updated_at: serverTimestamp(),
       });
     } else {
-      const ref = await addDoc(collection(db, COLLECTIONS.families), withTenant({
+      const ref = await addDoc(familiesCollection(), withTenant({
         name: fam.name,
         member_ids: [...existingIds, personId],
         updated_at: serverTimestamp(),
@@ -686,12 +688,12 @@ async function addMemberToFamily(key, personId) {
     }
 
     if (existingIds.length) {
-      await updateDoc(doc(db, COLLECTIONS.persons, personId), {
+      await updateDoc(personDoc(personId), {
         related_persons: arrayUnion(...existingIds),
         updated_at: serverTimestamp(),
       });
       for (const id of existingIds) {
-        await updateDoc(doc(db, COLLECTIONS.persons, id), {
+        await updateDoc(personDoc(id), {
           related_persons: arrayUnion(personId),
           updated_at: serverTimestamp(),
         });
@@ -699,7 +701,7 @@ async function addMemberToFamily(key, personId) {
     }
 
     await loadFamilies();
-    const snap = await getDocs(tenantQuery(COLLECTIONS.persons));
+    const snap = await getDocs(personsCollection());
     allProfiles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     dashboardPersons = allProfiles;
     recomputeEntityIds();
@@ -964,17 +966,17 @@ async function syncFamilyMembership(personId, fromId, toId) {
 
   if (fromId) {
     const peers = familyPeerIds(fromId, personId);
-    await updateDoc(doc(db, COLLECTIONS.families, fromId), {
+    await updateDoc(familyDoc(fromId), {
       member_ids: arrayRemove(personId),
       updated_at: serverTimestamp(),
     });
     if (peers.length) {
-      await updateDoc(doc(db, COLLECTIONS.persons, personId), {
+      await updateDoc(personDoc(personId), {
         related_persons: arrayRemove(...peers),
         updated_at: serverTimestamp(),
       });
       for (const id of peers) {
-        await updateDoc(doc(db, COLLECTIONS.persons, id), {
+        await updateDoc(personDoc(id), {
           related_persons: arrayRemove(personId),
           updated_at: serverTimestamp(),
         });
@@ -984,17 +986,17 @@ async function syncFamilyMembership(personId, fromId, toId) {
 
   if (toId) {
     const peers = familyPeerIds(toId, personId);
-    await updateDoc(doc(db, COLLECTIONS.families, toId), {
+    await updateDoc(familyDoc(toId), {
       member_ids: arrayUnion(personId),
       updated_at: serverTimestamp(),
     });
     if (peers.length) {
-      await updateDoc(doc(db, COLLECTIONS.persons, personId), {
+      await updateDoc(personDoc(personId), {
         related_persons: arrayUnion(...peers),
         updated_at: serverTimestamp(),
       });
       for (const id of peers) {
-        await updateDoc(doc(db, COLLECTIONS.persons, id), {
+        await updateDoc(personDoc(id), {
           related_persons: arrayUnion(personId),
           updated_at: serverTimestamp(),
         });
@@ -1262,7 +1264,7 @@ async function saveFamilyBuilder() {
 
   try {
     // Create the family record. Members are optional — an empty family is fine.
-    await addDoc(collection(db, COLLECTIONS.families), withTenant({
+    await addDoc(familiesCollection(), withTenant({
       name,
       member_ids: ids,
       updated_at: serverTimestamp(),
@@ -1274,11 +1276,11 @@ async function saveFamilyBuilder() {
     for (const id of ids) {
       const others = ids.filter((x) => x !== id);
       if (!others.length) continue;
-      const snap = await getDoc(doc(db, COLLECTIONS.persons, id));
+      const snap = await getDoc(personDoc(id));
       const existing = snap.exists() ? (snap.data().related_persons || []) : [];
       const merged = [...new Set([...existing, ...others])];
       if (merged.length !== existing.length) {
-        await updateDoc(doc(db, COLLECTIONS.persons, id), {
+        await updateDoc(personDoc(id), {
           related_persons: merged,
           updated_at: serverTimestamp(),
         });
@@ -1286,7 +1288,7 @@ async function saveFamilyBuilder() {
     }
 
     // Refresh caches so the new family shows everywhere.
-    const snap = await getDocs(tenantQuery(COLLECTIONS.persons));
+    const snap = await getDocs(personsCollection());
     allProfiles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     dashboardPersons = allProfiles;
     await loadFamilies();
@@ -1342,12 +1344,12 @@ async function handleSave(e) {
   try {
     let personId = editingPersonId;
     if (personId) {
-      await updateDoc(doc(db, COLLECTIONS.persons, personId), {
+      await updateDoc(personDoc(personId), {
         ...data,
         updated_at: serverTimestamp(),
       });
     } else {
-      const ref = await addDoc(collection(db, COLLECTIONS.persons), withTenant(data));
+      const ref = await addDoc(personsCollection(), withTenant(data));
       personId = ref.id;
     }
 
@@ -1587,14 +1589,14 @@ async function deleteProfile(person) {
   // arrayRemove is atomic (no read, no clobber). Non-blocking, like media above.
   try {
     for (const rid of (person.related_persons || [])) {
-      await updateDoc(doc(db, COLLECTIONS.persons, rid), {
+      await updateDoc(personDoc(rid), {
         related_persons: arrayRemove(person.id),
         updated_at: serverTimestamp(),
       });
     }
     for (const fam of familyRecords) {
       if ((fam.member_ids || []).includes(person.id)) {
-        await updateDoc(doc(db, COLLECTIONS.families, fam.id), {
+        await updateDoc(familyDoc(fam.id), {
           member_ids: arrayRemove(person.id),
           updated_at: serverTimestamp(),
         });
@@ -1606,7 +1608,7 @@ async function deleteProfile(person) {
 
   // Always delete the person document.
   try {
-    await deleteDoc(doc(db, COLLECTIONS.persons, person.id));
+    await deleteDoc(personDoc(person.id));
     setStatus(t("status.deletedToast", { name: personName(person) }), "success");
     allProfiles = allProfiles.filter((p) => p.id !== person.id);
     dashboardPersons = dashboardPersons.filter((p) => p.id !== person.id);
@@ -1995,7 +1997,7 @@ export function initAdminPortal() {
   }
 
   // Family picker — pre-load profiles so search works on first use
-  getDocs(tenantQuery(COLLECTIONS.persons)).then((snap) => {
+  getDocs(personsCollection()).then((snap) => {
     allProfiles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   }).catch(() => {});
   initFamilyPicker();

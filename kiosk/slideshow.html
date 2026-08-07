@@ -176,11 +176,9 @@
         getPersonById,
         getDocs,
         getDoc,
-        doc,
-        db,
-        COLLECTIONS,
+        personDoc,
         personMediaCollection,
-      } from "./js/firebase.js?v=1";
+      } from "./js/firebase.js?v=2";
       import { applyTenantBackground } from "./js/tenant-bg.js?v=2";
 
       // ── Helpers ──────────────────────────────────────────────────────────
@@ -501,7 +499,7 @@
             }
 
             const allIds   = [root.id, ...(root.related_persons || [])];
-            const snaps    = await Promise.all(allIds.map(id => getDoc(doc(db, COLLECTIONS.persons, id))));
+            const snaps    = await Promise.all(allIds.map(id => getDoc(personDoc(id))));
             members        = snaps.filter(s => s.exists()).map(s => ({ id: s.id, ...s.data() }));
 
             if (!members.length) {

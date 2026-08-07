@@ -6,3 +6,7 @@ package-lock.json
 # Firebase Admin service-account key (secret — used by scripts/rename-tenant.js)
 serviceAccountKey.json
 **/serviceAccountKey.json
+
+# Local Firestore dumps from scripts/nest-under-tenants.js --backup.
+# These contain every record, including the deceased's names and biographies.
+scripts/backups/

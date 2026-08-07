@@ -38,7 +38,7 @@
     </div>
 
     <script type="module">
-      import { getPersonById, getDocs, getDoc, doc, db, where, tenantQuery, COLLECTIONS } from "./js/firebase.js?v=1";
+      import { getPersonById, getDocs, getDoc, personDoc } from "./js/firebase.js?v=2";
       import { applyTenantBackground } from "./js/tenant-bg.js?v=2";
       applyTenantBackground();
 
@@ -80,7 +80,7 @@
             const allIds = [root.id, ...relatedIds];
 
             // Fetch all members
-            const fetches = allIds.map((id) => getDoc(doc(db, COLLECTIONS.persons, id)));
+            const fetches = allIds.map((id) => getDoc(personDoc(id)));
             const snaps   = await Promise.all(fetches);
             const members = snaps.filter((s) => s.exists()).map((s) => ({ id: s.id, ...s.data() }));
 

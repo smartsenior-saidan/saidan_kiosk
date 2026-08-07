@@ -69,15 +69,49 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 
 // Collection name constants (single source of truth).
+//
+// Memorial content lives UNDER the tenant document:
+//   tenants/{TENANT_ID}/individuals/{personId}/media/{mediaId}
+//   tenants/{TENANT_ID}/families/{familyId}
+//
+// The path is what scopes a read to one memorial site now, so there is no
+// tenant_id filter to remember (or forget). Always reach for the helpers below
+// rather than assembling a path by hand.
 export const COLLECTIONS = {
   tenants: "tenants",
   devices: "kiosk_devices",
-  persons: "deceased_individuals",
+  individuals: "individuals",
+  families: "families",
 };
+
+/** This kiosk's tenant document — the parent of all memorial content. */
+export function tenantDoc() {
+  return doc(db, COLLECTIONS.tenants, TENANT_ID);
+}
+
+/** tenants/{TENANT_ID}/individuals */
+export function personsCollection() {
+  return collection(tenantDoc(), COLLECTIONS.individuals);
+}
+
+/** tenants/{TENANT_ID}/individuals/{personId} */
+export function personDoc(personId) {
+  return doc(personsCollection(), personId);
+}
+
+/** tenants/{TENANT_ID}/families */
+export function familiesCollection() {
+  return collection(tenantDoc(), COLLECTIONS.families);
+}
+
+/** tenants/{TENANT_ID}/families/{familyId} */
+export function familyDoc(familyId) {
+  return doc(familiesCollection(), familyId);
+}
 
 /** Reference to the media subcollection for a specific person. */
 export function personMediaCollection(personId) {
-  return collection(db, COLLECTIONS.persons, personId, "media");
+  return collection(personDoc(personId), "media");
 }
 
 // Re-export Firestore + Storage helpers so other modules import from one place.
@@ -103,13 +137,10 @@ export {
 
 // --- Tenant-scoped query helpers -------------------------------------------
 
-export function tenantQuery(collectionName, ...constraints) {
-  return query(
-    collection(db, collectionName),
-    where("tenant_id", "==", TENANT_ID),
-    ...constraints
-  );
-}
+// `tenantQuery()` is gone: scoping moved from a where("tenant_id") filter into
+// the collection path, so personsCollection() / familiesCollection() already
+// return exactly this tenant's records. Add ...constraints with query() at the
+// call site if a caller ever needs ordering or limits.
 
 export function withTenant(data) {
   return {
@@ -130,13 +161,17 @@ export async function getTenantConfig() {
   }
 }
 
-/** Read a single person document, verifying it belongs to the active tenant. */
+/**
+ * Read a single person document.
+ *
+ * The tenant check this used to do after fetching is gone: the record is read
+ * from tenants/{TENANT_ID}/individuals, so belonging to this tenant is a
+ * property of the path rather than something to re-verify in the body.
+ */
 export async function getPersonById(personId) {
-  const snap = await getDoc(doc(db, COLLECTIONS.persons, personId));
+  const snap = await getDoc(personDoc(personId));
   if (!snap.exists()) return null;
-  const data = { id: snap.id, ...snap.data() };
-  if (data.tenant_id !== TENANT_ID) return null;
-  return data;
+  return { id: snap.id, ...snap.data() };
 }
 
 console.info(
