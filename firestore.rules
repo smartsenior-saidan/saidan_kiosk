@@ -108,21 +108,6 @@ service cloud.firestore {
       allow read:  if true;   // kiosk reads accent_color, bgm_path, name
       allow write: if false;  // managed via Firebase console / admin SDK only
 
-      // ══ MIGRATION — readable only so the CURRENTLY DEPLOYED login.js works ══
-      // That build looks for membership at tenants/{tid}/admins/{uid}. The
-      // grants have since moved to admins/{tid}/staff/{uid}, and duplicates are
-      // maintained here purely so a sign-in against the deployed build still
-      // resolves. Removing this block, or those documents, before the new build
-      // ships locks every non-super admin out of the panel — with no way back in
-      // through the panel itself. Grants are NOT read from here: ownsTenant()
-      // only consults admins/{tid}/staff.
-      // REMOVE once admin.saidans.org serves login.js reading admins/{tid}/staff.
-      match /admins/{uid} {
-        allow read:  if isSignedIn() && request.auth.uid == uid;
-        allow write: if false;
-      }
-      // ══ END MIGRATION ═════════════════════════════════════════════════════
-
       match /individuals/{personId} {
         allow read:  if true;                    // public kiosk
         allow write: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
