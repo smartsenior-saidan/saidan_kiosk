@@ -6,38 +6,39 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // Checks the /admins/{uid} doc exists before reading it — avoids a rules
-    // error (and unclear "denied" reason) for unlinked/fake accounts.
-    function userExists() {
-      return isSignedIn()
-        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
-    }
-
-    // Mirrors firestore.rules' ownsTenant() — reads tenant_id live from
-    // /admins/{uid}, never trusts anything from the client.
-    function userTenant() {
-      return firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.tenant_id;
-    }
-
-    // Mirrors firestore.rules' isSuperAdmin() — SmartSenior staff who
-    // administer every memorial site, marked by role == "super" on their
-    // /admins record. Both rule files have to agree: a super admin whose
-    // Firestore write is allowed but whose photo upload is denied leaves a
-    // profile saved with its media missing.
+    // Mirrors firestore.rules' isSuperAdmin(). Both rule files have to agree:
+    // a super admin whose Firestore write is allowed but whose photo upload is
+    // denied leaves a profile saved with its media missing — that exact bug has
+    // been shipped here before, so these two files change together or not at all.
     function isSuperAdmin() {
-      return firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.role == "super";
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/super_admins/$(request.auth.uid));
     }
 
+    // Mirrors firestore.rules' ownsTenant() — access is a document, not a field.
+    // tenants/{t}/admins/{uid} grants that one site; super_admins grants all.
     function ownsTenant(t) {
-      return userExists() && (userTenant() == t || isSuperAdmin());
+      return isSuperAdmin()
+        || (isSignedIn()
+            && firestore.exists(/databases/(default)/documents/tenants/$(t)/admins/$(request.auth.uid)));
     }
+
+    // ══ MIGRATION — mirrors legacyOwnsTenant() in firestore.rules ════════════
+    // Honours the pre-split /admins record so a session on the old login code
+    // can still upload. REMOVE together with its counterpart in firestore.rules.
+    function legacyOwnsTenant(t) {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.tenant_id == t;
+    }
+    // ══ END MIGRATION ════════════════════════════════════════════════════════
 
     // Per-tenant memorial media.
     // Public read (kiosk is unauthenticated, same as deceased_individuals in Firestore).
     // Writes only allowed to staff whose Firestore tenant_id matches this folder.
     match /{tenantId}/{allPaths=**} {
       allow read: if true;
-      allow write: if ownsTenant(tenantId);
+      allow write: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
     }
 
     // Shared fallback backgrounds — public read, no client writes (console-managed).

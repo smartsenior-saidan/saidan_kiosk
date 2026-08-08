@@ -6,9 +6,11 @@ import {
   signOut,
   doc,
   getDoc,
+  getDocs,
+  collection,
   GoogleAuthProvider,
   signInWithPopup,
-} from "./firebase.js?v=6";
+} from "./firebase.js?v=9";
 
 const form      = document.getElementById("loginForm");
 const emailEl   = document.getElementById("email");
@@ -49,25 +51,67 @@ function friendlyError(code) {
   }
 }
 
-/** Gate the signed-in user on their /admins record and hand off to the console.
+/**
+ * Find which memorial site this account may administer.
+ *
+ * Access is a document, not a field: super_admins/{uid} grants every site,
+ * tenants/{tid}/admins/{uid} grants that one. Neither can be discovered from the
+ * UID alone, so this reads the (publicly readable) tenant list and checks each
+ * for a membership document. That is one read per tenant, once per sign-in —
+ * it scales with the number of memorial sites, not the number of staff.
+ *
+ * Rules permit each of those reads because the account is only ever asking about
+ * its OWN uid; it cannot enumerate who else works at a site.
+ *
+ * Returns { tenantId, role, displayName } or null if the account has no grant.
+ */
+async function resolveGrant(user) {
+  // A super admin belongs to no tenant. `default_tenant` only decides which
+  // site the console opens on — the picker in admin.js can switch to any other.
+  const superSnap = await getDoc(doc(db, "super_admins", user.uid));
+  if (superSnap.exists()) {
+    const data = superSnap.data();
+    const tenantsSnap = await getDocs(collection(db, "tenants"));
+    const fallback = tenantsSnap.docs[0]?.id;
+    const tenantId = data.default_tenant || fallback;
+    if (!tenantId) return null; // no tenants exist at all — nothing to open
+    return { tenantId, role: "super", displayName: data.display_name };
+  }
+
+  const tenantsSnap = await getDocs(collection(db, "tenants"));
+  for (const tenantDoc of tenantsSnap.docs) {
+    const memberSnap = await getDoc(
+      doc(db, "tenants", tenantDoc.id, "admins", user.uid)
+    );
+    if (memberSnap.exists()) {
+      return {
+        tenantId: tenantDoc.id,
+        role: "admin",
+        displayName: memberSnap.data().display_name,
+      };
+    }
+  }
+  return null;
+}
+
+/** Gate the signed-in user on their membership and hand off to the console.
  *  Authentication only proves who they are — this is what decides whether they
  *  may use the portal at all, and which memorial site they see. */
 async function completeSignIn(user) {
-  const userSnap = await getDoc(doc(db, "admins", user.uid));
-  const userData = userSnap.exists() ? userSnap.data() : {};
+  const grant = await resolveGrant(user);
 
-  // No tenant = the account hasn't been linked to a memorial site yet.
+  // No membership = the account hasn't been linked to a memorial site yet.
   // Refuse rather than silently dropping into a shared "demo" tenant.
-  if (!userData.tenant_id) {
+  if (!grant) {
     await signOut(auth);
     sessionStorage.clear();
     showStatus("このアカウントはまだ霊園・墓地に紐付けられていません。SmartSenior にご連絡ください。");
     return false;
   }
 
-  sessionStorage.setItem("ss_tenant_id", userData.tenant_id);
-  sessionStorage.setItem("ss_role", userData.role || "admin");
-  sessionStorage.setItem("ss_display_name", userData.display_name || user.email);
+  sessionStorage.setItem("ss_tenant_id", grant.tenantId);
+  sessionStorage.setItem("ss_role", grant.role);
+  sessionStorage.setItem("ss_display_name", grant.displayName || user.email);
 
   // Replace (not push) so the login page never sits in browser history —
   // pressing Back from the dashboard shouldn't be able to land back here.

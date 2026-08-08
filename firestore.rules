@@ -3,22 +3,23 @@ rules_version = '2';
 // SmartSenior — multi-tenant memorial kiosk.
 //
 // Tenant isolation model:
-//   • Each staff login has an /admins/{uid} doc holding their `tenant_id`.
 //   • Memorial content lives under its tenant — tenants/{tid}/individuals/{id},
 //     tenants/{tid}/families/{id} — so the PATH decides which site a record
-//     belongs to. A write is allowed only when the caller owns the tenant named
-//     in the path, read live from /admins and never trusted from the client.
+//     belongs to.
+//   • Access is a DOCUMENT, not a field. tenants/{tid}/admins/{uid} grants that
+//     one site; super_admins/{uid} grants all of them. Both are checked with
+//     exists() on a fully-specified path, live on every write, so revoking
+//     someone takes effect immediately and a tampered client can claim neither.
 //   • Memorial content is publicly READABLE because the visitor-facing kiosk
 //     runs without authentication. Each kiosk is pinned to one tenant by the
 //     path it reads, but reads themselves are open.
 //
-// /admins stays top-level: its document ID is the Firebase Auth UID, and these
-// rules look it up by request.auth.uid to discover which tenant the caller
-// belongs to — so it cannot itself live behind a tenant.
+// A super admin belongs to NO tenant. The `default_tenant` on their record only
+// decides which site the admin panel opens on; it grants nothing.
 //
-// MIGRATION IN PROGRESS: the flat deceased_individuals / deceased_families
-// collections are still present and still permitted, below. See the block there
-// for what has to be true before they can be deleted.
+// MIGRATION IN PROGRESS: the pre-split flat /admins collection is still present
+// and still honoured. See the MIGRATION block below for what has to be true
+// before it can be deleted.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -27,33 +28,53 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // The signed-in user's assigned tenant, read from their /admins record.
-    function userTenant() {
-      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.tenant_id;
-    }
-
-    function userExists() {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-    }
-
-    // SmartSenior staff who administer every memorial site. Marked by
-    // role == "super" on their /admins record — the same record that carries
-    // tenant_id, so there is still exactly one place that grants access.
+    // SmartSenior staff who administer every memorial site. Membership in
+    // /super_admins IS the grant — there is no role field to disagree with a
+    // tenant field, because a super admin belongs to no tenant at all.
     function isSuperAdmin() {
-      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == "super";
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/super_admins/$(request.auth.uid));
     }
 
-    // True when the signed-in user may write to tenant `t`: either it's their
-    // own site, or they're a super admin. Read from /admins on every write, so
-    // revoking someone takes effect immediately and a tampered client can't
-    // claim either status.
+    // True when the signed-in user may write to tenant `t`.
+    //
+    // The grant is a document at tenants/$(t)/admins/$(uid): a fully-specified
+    // path, so this is exists() rather than reading a record and comparing a
+    // field. Checked live on every write, so revoking someone still takes
+    // effect immediately and a tampered client cannot claim either status.
     function ownsTenant(t) {
-      return userExists() && (userTenant() == t || isSuperAdmin());
+      return isSuperAdmin()
+        || (isSignedIn()
+            && exists(/databases/$(database)/documents/tenants/$(t)/admins/$(request.auth.uid)));
     }
+
+    // ══ MIGRATION — the pre-split flat admins collection ═════════════════════
+    // Still present and still honoured, so a session running the old login code
+    // (which reads admins/{uid}.tenant_id) keeps working while the switchover
+    // lands. scripts/split-admins.js has already written every one of these as a
+    // membership document; `--verify` proves the two agree.
+    //
+    // REMOVE this function, its two uses in ownsTenant call sites, and the
+    // /admins/{uid} block, once the admin panel is deployed on the new login
+    // path and real sign-ins have been observed. Then delete the collection.
+    function legacyOwnsTenant(t) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.tenant_id == t;
+    }
+
+    match /admins/{uid} {
+      allow read:  if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+    // ══ END MIGRATION ════════════════════════════════════════════════════════
 
     // ── Staff accounts ──────────────────────────────────────────────────────
-    match /admins/{uid} {
+    // Both are console-managed: an account that could grant itself access is
+    // not an access control. A user may read their OWN membership document —
+    // that is how login discovers which tenant to open — but not anyone else's,
+    // so the staff list of a site is not readable by its visitors.
+    match /super_admins/{uid} {
       allow read:  if isSignedIn() && request.auth.uid == uid;
       allow write: if false;
     }
@@ -63,60 +84,39 @@ service cloud.firestore {
     //
     // The path segment is what grants the write, not a field in the document
     // body — so a record cannot be written into a tenant the caller doesn't
-    // own no matter what its `tenant_id` says. The old flat rules below had to
-    // compare request.resource.data.tenant_id on create and resource.data on
-    // update, which meant a bug that stamped the wrong tenant_id could file a
-    // record at the wrong memorial site and the rules would allow it. Nesting
-    // makes that class of bug unrepresentable, which is why create/update/delete
-    // collapse back into a single `write` here.
+    // own no matter what its `tenant_id` says. The pre-nesting rules compared
+    // request.resource.data.tenant_id on create and resource.data on update,
+    // which meant a bug that stamped the wrong tenant_id could file a record at
+    // the wrong memorial site and the rules would allow it. Nesting makes that
+    // class of bug unrepresentable, which is why create/update/delete collapse
+    // back into a single `write` here.
     match /tenants/{tenantId} {
       allow read:  if true;   // kiosk reads accent_color, bgm_path, name
       allow write: if false;  // managed via Firebase console / admin SDK only
 
+      // Per-tenant staff. Existence is the grant; see ownsTenant() above.
+      // Readable only by the account it names, so login can find its own
+      // membership without exposing who else works at a site.
+      match /admins/{uid} {
+        allow read:  if isSignedIn() && request.auth.uid == uid;
+        allow write: if false;
+      }
+
       match /individuals/{personId} {
         allow read:  if true;                    // public kiosk
-        allow write: if ownsTenant(tenantId);
+        allow write: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
 
         match /media/{mediaId} {
           allow read:  if true;                  // public kiosk
-          allow write: if ownsTenant(tenantId);
+          allow write: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
         }
       }
 
       match /families/{familyId} {
         allow read:  if true;                    // public kiosk
-        allow write: if ownsTenant(tenantId);
+        allow write: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
       }
     }
-
-    // ══ MIGRATION — the pre-nesting flat collections ═════════════════════════
-    // Still populated: scripts/nest-under-tenants.js COPIES into the nested
-    // paths above and deliberately leaves these untouched, so both locations
-    // hold the same records during the switchover and a rollback is a code
-    // revert rather than a restore.
-    //
-    // REMOVE these three blocks, and delete the collections, once (a) the kiosk
-    // and admin are deployed on the nested paths, and (b) the columbarium's
-    // config.json `collection` is repointed at tenants/{tid}/individuals.
-    // Until (b), the columbarium still reads deceased_individuals.
-    match /deceased_individuals/{personId} {
-      allow read:          if true;
-      allow create:        if ownsTenant(request.resource.data.tenant_id);
-      allow update, delete: if ownsTenant(resource.data.tenant_id);
-
-      match /media/{mediaId} {
-        allow read:          if true;
-        allow create:        if ownsTenant(request.resource.data.tenant_id);
-        allow update, delete: if ownsTenant(resource.data.tenant_id);
-      }
-    }
-
-    match /deceased_families/{familyId} {
-      allow read:          if true;
-      allow create:        if ownsTenant(request.resource.data.tenant_id);
-      allow update, delete: if ownsTenant(resource.data.tenant_id);
-    }
-    // ══ END MIGRATION ════════════════════════════════════════════════════════
 
     // ── Kiosk devices ───────────────────────────────────────────────────────
     match /kiosk_devices/{id} {

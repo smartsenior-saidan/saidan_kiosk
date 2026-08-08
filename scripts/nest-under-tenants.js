@@ -40,6 +40,8 @@
  *   node nest-under-tenants.js --tenant=tokyo_reien  # dry run, one tenant only
  *   node nest-under-tenants.js --commit            # actually write the copies
  *   node nest-under-tenants.js --verify            # compare source vs destination counts
+ *   node nest-under-tenants.js --drop-source          # report what deleting the old collections would remove
+ *   node nest-under-tenants.js --drop-source --commit # actually delete them (guarded)
  *
  * Re-running with --commit is safe. Writes use set() without merge, so a run
  * that died halfway simply converges on a second pass. The corollary: while both
@@ -75,7 +77,8 @@ const MEDIA = 'media';
 const argv = process.argv.slice(2);
 const COMMIT = argv.includes('--commit');
 const VERIFY = argv.includes('--verify');
-const BACKUP = argv.includes('--backup');
+const BACKUP = argv.includes("--backup");
+const DROP = argv.includes("--drop-source");
 const ONLY_TENANT =
   (argv.find((a) => a.startsWith('--tenant=')) || '').split('=')[1] || null;
 
@@ -259,6 +262,110 @@ async function verify() {
   );
 }
 
+// ── Drop the source collections ─────────────────────────────────────────────
+// The irreversible step, and the only one in this file that destroys anything.
+// Three guards, all of which must pass before a single delete is issued:
+//
+//   1. A local backup must exist (--backup). Its age is printed, because a
+//      backup taken before the last week of edits is not the backup you think.
+//   2. Source and nested counts must match EXACTLY, media included. This is the
+//      same check as --verify; a mismatch means the copy is incomplete and the
+//      source is still the only complete record.
+//   3. --commit must be passed as well. `--drop-source` alone only reports.
+//
+// The console's "delete collection" button is not equivalent: it removes
+// documents in passes and can leave media subcollections orphaned under deleted
+// parents without reporting it. This walks the subcollections explicitly.
+async function dropSource() {
+  const backupDir = path.resolve(__dirname, 'backups');
+  const backups = fs.existsSync(backupDir)
+    ? fs.readdirSync(backupDir).filter((f) => f.endsWith('.json')).sort()
+    : [];
+
+  console.log(`\n${bold(COMMIT ? 'DROPPING SOURCE COLLECTIONS' : 'DRY RUN — nothing will be deleted')}\n`);
+
+  if (!backups.length) {
+    console.log(red(bold('  No backup found in scripts/backups/.')));
+    console.log('  Run:  node nest-under-tenants.js --backup\n');
+    process.exit(1);
+  }
+  const newest = backups[backups.length - 1];
+  const ageMin = Math.round((Date.now() - fs.statSync(path.join(backupDir, newest)).mtimeMs) / 60000);
+  console.log(`  backup: ${newest}  ${dim(`(${ageMin} min old)`)}`);
+
+  // Guard 2 — recount everything, including media, and refuse on any drift.
+  const tenants = await existingTenantIds();
+  let mismatch = false;
+  let toDelete = { people: 0, media: 0, families: 0 };
+
+  for (const tenantId of [...tenants].sort()) {
+    for (const [src, dst] of [
+      [SRC_INDIVIDUALS, DST_INDIVIDUALS],
+      [SRC_FAMILIES, DST_FAMILIES],
+    ]) {
+      const srcSnap = await db.collection(src).where('tenant_id', '==', tenantId).get();
+      const dstSnap = await db.collection(TENANTS).doc(tenantId).collection(dst).get();
+      if (srcSnap.size !== dstSnap.size) {
+        mismatch = true;
+        console.log(red(`  ${tenantId}/${dst}: source ${srcSnap.size} vs nested ${dstSnap.size}`));
+      }
+      if (dst === DST_INDIVIDUALS) {
+        let s = 0;
+        let d = 0;
+        for (const doc of srcSnap.docs) s += (await doc.ref.collection(MEDIA).get()).size;
+        for (const doc of dstSnap.docs) d += (await doc.ref.collection(MEDIA).get()).size;
+        if (s !== d) {
+          mismatch = true;
+          console.log(red(`  ${tenantId}/${dst}/media: source ${s} vs nested ${d}`));
+        }
+        toDelete.people += srcSnap.size;
+        toDelete.media += s;
+      } else {
+        toDelete.families += srcSnap.size;
+      }
+    }
+  }
+
+  if (mismatch) {
+    console.log(red(bold('\n  Counts differ — the nested copy is incomplete.')));
+    console.log('  Re-run --commit to finish the copy, then --verify, then come back.\n');
+    process.exit(1);
+  }
+  console.log(green('  counts match: nested copy is complete\n'));
+  console.log(`  would delete  ${toDelete.people} individuals, ${toDelete.media} media, ${toDelete.families} families`);
+  console.log(dim(`  from ${SRC_INDIVIDUALS} and ${SRC_FAMILIES} (top-level)\n`));
+
+  if (!COMMIT) {
+    console.log(dim('  Dry run. Nothing was deleted.'));
+    console.log(`  Re-run with ${bold('--drop-source --commit')} to delete.\n`);
+    return;
+  }
+
+  const writer = db.bulkWriter();
+  for (const coll of [SRC_INDIVIDUALS, SRC_FAMILIES]) {
+    const snap = await db.collection(coll).get();
+    for (const doc of snap.docs) {
+      // Subcollections are NOT removed by deleting their parent — they would be
+      // left addressable under a document that no longer exists.
+      for (const sub of await doc.ref.listCollections()) {
+        const subSnap = await sub.get();
+        for (const s of subSnap.docs) writer.delete(s.ref);
+      }
+      writer.delete(doc.ref);
+    }
+  }
+  await writer.close();
+
+  const leftA = (await db.collection(SRC_INDIVIDUALS).get()).size;
+  const leftB = (await db.collection(SRC_FAMILIES).get()).size;
+  console.log(
+    leftA + leftB === 0
+      ? green(bold('\n  Deleted. Both source collections are now empty.\n'))
+      : red(bold(`\n  ${leftA + leftB} document(s) remain — re-run.\n`))
+  );
+  console.log(dim('  Next: remove the MIGRATION block from firestore.rules and deploy.\n'));
+}
+
 // ── Plan + copy ─────────────────────────────────────────────────────────────
 async function run() {
   const tenantsThatExist = await existingTenantIds();
@@ -412,7 +519,7 @@ async function run() {
   console.log('  Next: node nest-under-tenants.js --verify\n');
 }
 
-const mode = BACKUP ? backup : VERIFY ? verify : run;
+const mode = DROP ? dropSource : BACKUP ? backup : VERIFY ? verify : run;
 mode().catch((err) => {
   console.error(red(`\n${err.stack || err}\n`));
   process.exit(1);
