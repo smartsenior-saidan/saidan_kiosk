@@ -30,7 +30,7 @@ import {
   ROLE,
   personMediaCollection,
   personMediaDoc,
-} from "./firebase.js?v=9";
+} from "./firebase.js?v=10";
 import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=41";
 
 // ── State ───────────────────────────────────────────────────────────────────

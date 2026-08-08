@@ -16,11 +16,11 @@ service firebase.storage {
     }
 
     // Mirrors firestore.rules' ownsTenant() — access is a document, not a field.
-    // tenants/{t}/admins/{uid} grants that one site; super_admins grants all.
+    // admins/{t}/staff/{uid} grants that one site; super_admins grants all.
     function ownsTenant(t) {
       return isSuperAdmin()
         || (isSignedIn()
-            && firestore.exists(/databases/(default)/documents/tenants/$(t)/admins/$(request.auth.uid)));
+            && firestore.exists(/databases/(default)/documents/admins/$(t)/staff/$(request.auth.uid)));
     }
 
     // ══ MIGRATION — mirrors legacyOwnsTenant() in firestore.rules ════════════

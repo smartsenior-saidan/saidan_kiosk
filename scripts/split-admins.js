@@ -5,10 +5,10 @@
  * split-admins.js — turn the flat admins collection into membership documents.
  *
  *   admins/{uid} role=="super"  ->  super_admins/{uid}
- *   admins/{uid} otherwise      ->  tenants/{tenant_id}/admins/{uid}
+ *   admins/{uid} otherwise      ->  admins/{tenant_id}/staff/{uid}
  *
  * The point of the shape: EXISTENCE IS THE GRANT. A document under
- * tenants/{tid}/admins means access to that tenant, a document under
+ * admins/{tid}/staff means access to that tenant, a document under
  * super_admins means access to all of them. Both are fully-specified paths, so
  * firestore.rules can check them with exists() instead of reading a document and
  * comparing a field — cheaper per write, and it can no longer disagree with
@@ -17,6 +17,10 @@
  * That is also why the copied documents keep only `display_name`: `tenant_id` is
  * now the path and `role` is now which collection you are in. Carrying either
  * forward would recreate the ambiguity this is meant to remove.
+ *
+ * Access control lives in its own top-level tree rather than mixing into the
+ * memorial content under /tenants: /admins groups staff by site, /super_admins
+ * sits beside it.
  *
  * One exception. A super admin gets `default_tenant`, carried over from their old
  * tenant_id. It is NOT a permission — a super admin can write to every tenant
@@ -43,9 +47,10 @@ const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 
 const SRC_ADMINS = 'admins';
-const SUPER_ADMINS = 'super_admins';
+const SUPER_ADMINS = "super_admins";
+const STAFF = "staff";
 const TENANTS = 'tenants';
-const DST_ADMINS = 'admins'; // as a subcollection of a tenant
+
 
 const argv = process.argv.slice(2);
 const COMMIT = argv.includes('--commit');
@@ -82,6 +87,12 @@ async function plan() {
   const blocked = [];
 
   for (const doc of snap.docs) {
+    // A document in /admins whose ID is a tenant ID is a CONTAINER for that
+    // tenant's staff, not a person. Without this guard a re-run would read
+    // admins/kodaira_memorial, see its tenant_id field, and cheerfully file it
+    // as staff of itself.
+    if (tenantIds.has(doc.id)) continue;
+
     const d = doc.data();
     const name = d.display_name || dim('(no display_name)');
     if (d.role === 'super') {
@@ -115,7 +126,7 @@ async function run() {
   if (!supers.length) console.log(dim('  (none)'));
 
   for (const [tenantId, list] of [...members].sort()) {
-    console.log(`\n${bold(`${TENANTS}/${tenantId}/${DST_ADMINS}/`)}`);
+    console.log(`\n${bold(`${SRC_ADMINS}/${tenantId}/${STAFF}/`)}`);
     for (const m of list) console.log(`  ${m.uid}  ${m.name}`);
   }
 
@@ -148,9 +159,15 @@ async function run() {
     writer.set(db.collection(SUPER_ADMINS).doc(s.uid), doc);
   }
   for (const [tenantId, list] of members) {
+    // Give the container an actual field. A subcollection can hang off a
+    // document that was never written, but Firestore then calls that document
+    // "missing" and the console greys the ID out — which reads as breakage
+    // rather than as intent to whoever inherits this.
+    writer.set(db.collection(SRC_ADMINS).doc(tenantId), { tenant_id: tenantId });
+
     for (const m of list) {
       writer.set(
-        db.collection(TENANTS).doc(tenantId).collection(DST_ADMINS).doc(m.uid),
+        db.collection(SRC_ADMINS).doc(tenantId).collection(STAFF).doc(m.uid),
         { display_name: m.name }
       );
     }
@@ -172,8 +189,10 @@ async function verify() {
   const snap = await db.collection(SRC_ADMINS).get();
   console.log(`\n${bold('Verifying every admin has a new-style grant')}\n`);
 
+  const tenantIds = new Set((await db.collection(TENANTS).get()).docs.map((t) => t.id));
   let missing = 0;
   for (const doc of snap.docs) {
+    if (tenantIds.has(doc.id)) continue;   // container, not a person
     const d = doc.data();
     const label = `${doc.id}  ${(d.display_name || '').padEnd(12)}`;
     let ok;
@@ -182,8 +201,8 @@ async function verify() {
       ok = (await db.collection(SUPER_ADMINS).doc(doc.id).get()).exists;
       where = `${SUPER_ADMINS}/`;
     } else {
-      ok = (await db.collection(TENANTS).doc(d.tenant_id).collection(DST_ADMINS).doc(doc.id).get()).exists;
-      where = `${TENANTS}/${d.tenant_id}/${DST_ADMINS}/`;
+      ok = (await db.collection(SRC_ADMINS).doc(d.tenant_id).collection(STAFF).doc(doc.id).get()).exists;
+      where = `${SRC_ADMINS}/${d.tenant_id}/${STAFF}/`;
     }
     if (!ok) missing++;
     console.log(`  ${ok ? green('OK  ') : red('GONE')}  ${label}  ${where}`);

@@ -10,7 +10,7 @@ import {
   collection,
   GoogleAuthProvider,
   signInWithPopup,
-} from "./firebase.js?v=9";
+} from "./firebase.js?v=10";
 
 const form      = document.getElementById("loginForm");
 const emailEl   = document.getElementById("email");
@@ -55,7 +55,7 @@ function friendlyError(code) {
  * Find which memorial site this account may administer.
  *
  * Access is a document, not a field: super_admins/{uid} grants every site,
- * tenants/{tid}/admins/{uid} grants that one. Neither can be discovered from the
+ * admins/{tid}/staff/{uid} grants that one. Neither can be discovered from the
  * UID alone, so this reads the (publicly readable) tenant list and checks each
  * for a membership document. That is one read per tenant, once per sign-in —
  * it scales with the number of memorial sites, not the number of staff.
@@ -81,7 +81,7 @@ async function resolveGrant(user) {
   const tenantsSnap = await getDocs(collection(db, "tenants"));
   for (const tenantDoc of tenantsSnap.docs) {
     const memberSnap = await getDoc(
-      doc(db, "tenants", tenantDoc.id, "admins", user.uid)
+      doc(db, "admins", tenantDoc.id, "staff", user.uid)
     );
     if (memberSnap.exists()) {
       return {
