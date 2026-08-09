@@ -24,7 +24,7 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap"
     />
-    <link rel="stylesheet" href="css/kiosk.css?v=95" />
+    <link rel="stylesheet" href="css/kiosk.css?v=96" />
     <!-- Pins this kiosk to its memorial site (tenant). Runs before modules. -->
     <script src="js/config.js?v=2"></script>
   </head>
@@ -33,6 +33,13 @@
          HOME SCREEN
          ═══════════════════════════════════════════════════ -->
     <div id="screen-home" class="screen screen-home">
+      <!-- Troubleshooting aid — real-time wifi/connectivity indicator, not
+           tied to any tenant theming. See js/net-status.js. -->
+      <div class="net-status" id="netStatus" aria-live="polite">
+        <span class="net-status-dot"></span>
+        <span class="net-status-label" id="netStatusLabel">オンライン</span>
+      </div>
+
       <div class="home-greeting">
         <p class="home-greeting-main" data-i18n="greetingMain"></p>
         <p class="home-greeting-sub" data-i18n="greetingSub"></p>
@@ -133,6 +140,7 @@
     <script type="module">
       import { initSearchScreen } from "./js/search.js?v=2";
       import { applyTenantBackground } from "./js/tenant-bg.js?v=2";
+      import { initNetStatus } from "./js/net-status.js?v=1";
 
       // ── Translations ──────────────────────────────────────────────────
       const STRINGS = {
@@ -511,6 +519,7 @@
       // ── Boot ──────────────────────────────────────────────────────────
       applyText();
       initSearchScreen();
+      initNetStatus();
 
       // Page is invisible (bg-loading opacity:0) until this resolves.
       applyTenantBackground();

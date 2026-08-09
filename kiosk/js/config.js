@@ -1,14 +1,17 @@
 // config.js — per-device kiosk configuration (classic script, runs first).
 //
-// Each physical kiosk belongs to ONE memorial site (tenant). Set DEFAULT_TENANT
-// to that site's tenant_id before installing the kiosk, e.g. "site1".
+// Each physical kiosk belongs to ONE memorial site (tenant), set via
+// ?site=<tenant_id> on first load — the value is saved to localStorage so it
+// persists across PWA restarts and all future sessions on the same device.
 //
-// You can also override at runtime by loading the kiosk once with ?site=site1 —
-// the value is saved to localStorage so it persists across PWA restarts and
-// remembered for all future sessions on the same device.
+// DEFAULT_TENANT only fires if a device was never given ?site= or had its
+// storage wiped. It is deliberately NOT a real tenant id: defaulting a blank
+// device to an actual site (e.g. "kodaira_memorial") would risk a tablet
+// silently showing one memorial site's data while physically installed at
+// another. Better to show nothing and log loudly than show the wrong temple.
 
 (function () {
-  var DEFAULT_TENANT = "memorial-1"; // ← change per memorial site (e.g. "site1")
+  var DEFAULT_TENANT = "unconfigured-device"; // intentionally not a real tenant id — see note above
 
   var KEY = "kiosk_tenant";
   var param = new URLSearchParams(window.location.search).get("site");
@@ -20,7 +23,10 @@
   }
   var tenant = null;
   try { tenant = sessionStorage.getItem(KEY) || localStorage.getItem(KEY); } catch (e) {}
-  tenant = tenant || DEFAULT_TENANT;
+  if (!tenant) {
+    console.warn("[kiosk] no tenant configured for this device — pass ?site=<tenant_id> once to set it.");
+    tenant = DEFAULT_TENANT;
+  }
 
   window.__ENV__ = Object.assign({}, window.__ENV__, { TENANT_ID: tenant });
 

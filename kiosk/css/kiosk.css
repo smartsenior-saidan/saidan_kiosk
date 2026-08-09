@@ -130,6 +130,55 @@ html.theme-pending body {
   margin: 0;
 }
 
+/* ── Network status badge ─────────────────────────────────────────────────
+   Always-on troubleshooting aid, not part of tenant theming — a staffer
+   checking a stuck kiosk should see this before doing anything else. */
+.net-status {
+  position: fixed;
+  top: clamp(16px, 3vh, 28px);
+  right: clamp(16px, 3vw, 28px);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: var(--shadow-soft);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.net-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-success);
+  flex-shrink: 0;
+  transition: background-color 0.3s ease;
+}
+
+.net-status.offline .net-status-dot {
+  background: var(--color-danger);
+}
+
+.net-status.offline .net-status-label {
+  color: var(--color-danger);
+}
+
+@media (max-width: 700px) {
+  .net-status {
+    padding: 6px 12px;
+    gap: 6px;
+    font-size: 0.8rem;
+  }
+  .net-status-dot {
+    width: 8px;
+    height: 8px;
+  }
+}
+
 /* IC card reader note — large, bold callout centered with the rest of the
    home screen content (not pinned to the edge, so it reads as a primary option). */
 .home-ic-note {

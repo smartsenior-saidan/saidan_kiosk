@@ -1,7 +1,7 @@
 // SmartSenior Kiosk — Service Worker
 // Caches the app shell so the kiosk loads instantly and survives brief network drops.
 
-const CACHE = 'smartsenior-v66';
+const CACHE = 'smartsenior-v67';
 
 const APP_SHELL = [
   './index.html',
@@ -16,6 +16,7 @@ const APP_SHELL = [
   './js/profile.js',
   './js/firebase.js',
   './js/tenant-bg.js',
+  './js/net-status.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];
