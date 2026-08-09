@@ -30,7 +30,7 @@ import {
   ROLE,
   personMediaCollection,
   personMediaDoc,
-} from "./firebase.js?v=10";
+} from "./firebase.js?v=11";
 import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=41";
 
 // ── State ───────────────────────────────────────────────────────────────────
@@ -91,10 +91,23 @@ function matchesKaimyoQuery(person, rawQuery) {
   return !!kaimyo && kaimyo.includes(q);
 }
 
+// Matches a person against their persisted display id (e.g. "KDR-I0004-01"),
+// case-insensitive and by substring so "0004" or "i0004-01" both find it.
+function matchesDisplayIdQuery(person, rawQuery) {
+  const q = (rawQuery || "").trim().toLowerCase();
+  if (!q) return false;
+  return !!person.display_id && person.display_id.toLowerCase().includes(q);
+}
+
 // The search used by the profile lists (dashboard, family, individual):
-// matches on name (first/last, kanji or kana) OR posthumous name (kaimyo).
+// matches on name (first/last, kanji or kana), posthumous name (kaimyo), or
+// the person's own display id.
 function matchesProfileQuery(person, rawQuery) {
-  return matchesNameQuery(person, rawQuery) || matchesKaimyoQuery(person, rawQuery);
+  return (
+    matchesNameQuery(person, rawQuery) ||
+    matchesKaimyoQuery(person, rawQuery) ||
+    matchesDisplayIdQuery(person, rawQuery)
+  );
 }
 let dashboardPersons = [];  // cached for the family/individual panel search
 let familyRecords = [];     // named family docs (the `families` collection)
@@ -139,7 +152,7 @@ async function initSiteSwitcher(siteEl) {
       .join("");
 
     sel.addEventListener("change", () => {
-      sessionStorage.setItem("ss_tenant_id", sel.value);
+      localStorage.setItem("ss_tenant_id", sel.value);
       window.location.reload();
     });
 
@@ -312,7 +325,7 @@ async function loadSearchData() {
     allProfiles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     dashboardPersons = allProfiles;
     await loadFamilies();
-    recomputeEntityIds();
+    await recomputeEntityIds();
     renderFamilyIndividualPanel();
     updateSearchTabCounts();
   } catch (err) {
@@ -404,28 +417,109 @@ function tenantCode() {
 //   person id    → "KDR-I0001-01" (family member — reuses their family's
 //                  number, since a person is an individual record even when
 //                  nested inside a family) or "KDR-I0002" (standalone individual)
-// Families are numbered in their stable list order; individuals by age. IDs are
-// derived for display only (admin) — not persisted.
-function recomputeEntityIds() {
+//
+// STATIC by design: each id is assigned ONCE, the first time a record is ever
+// seen without one, then persisted to Firestore as `display_id` on that
+// record and read back verbatim on every later call — never recalculated
+// from list position. Deleting an earlier record leaves a gap in the
+// numbering rather than renumbering everything after it; that gap is the
+// price of an id that never silently starts pointing at a different person.
+//
+// Only REAL family records (a doc in the `families` collection) get a
+// persisted id — "legacy" groupings (people linked only via related_persons,
+// with no family doc) have nowhere to persist one, so those keep the old
+// live-recomputed numbering until the grouping is promoted to a real record
+// (already happens automatically the first time someone is added to one —
+// see addMemberToFamily).
+async function recomputeEntityIds() {
   const code = tenantCode();
   const family = new Map();
   const person = new Map();
 
-  buildFamilies().forEach((f, i) => {
-    const famNum = String(i + 1).padStart(4, "0");
-    family.set(f.key, `${code}-F${famNum}`);
-    f.members.forEach((p, j) => {
-      person.set(p.id, `${code}-I${famNum}-${String(j + 1).padStart(2, "0")}`);
-    });
+  // Highest number already persisted, so a fresh assignment can never reuse
+  // one that's already on another record.
+  let maxFamilyNum = 0;
+  for (const rec of familyRecords) {
+    const n = parseInt((rec.display_id || "").match(/-F(\d+)$/)?.[1] || "0", 10);
+    if (n > maxFamilyNum) maxFamilyNum = n;
+  }
+  let maxStandaloneNum = 0;
+  const familySuffixMax = new Map(); // family's "...-I0004" part -> highest member suffix used
+  for (const p of dashboardPersons) {
+    const id = p.display_id || "";
+    const famMember = id.match(/^(.*-I\d+)-(\d+)$/);
+    if (famMember) {
+      const n = parseInt(famMember[2], 10);
+      if (n > (familySuffixMax.get(famMember[1]) || 0)) familySuffixMax.set(famMember[1], n);
+    } else {
+      const standalone = id.match(/-I(\d+)$/);
+      if (standalone) {
+        const n = parseInt(standalone[1], 10);
+        if (n > maxStandaloneNum) maxStandaloneNum = n;
+      }
+    }
+  }
+
+  // ── Real family records — persisted, static ──────────────────────────────
+  for (const rec of familyRecords) {
+    let id = rec.display_id;
+    if (!id) {
+      maxFamilyNum += 1;
+      id = `${code}-F${String(maxFamilyNum).padStart(4, "0")}`;
+      rec.display_id = id; // update the in-memory cache immediately — members below read this
+      try {
+        await updateDoc(familyDoc(rec.id), { display_id: id });
+      } catch (err) {
+        console.warn("[admin] failed to persist family display_id:", err);
+      }
+    }
+    family.set(`rec:${rec.id}`, id);
+  }
+
+  // Legacy (unrecorded) groupings — nowhere to persist an id, so these stay
+  // live-recomputed, same as before this change.
+  const covered = familyMemberIdSet();
+  const legacyLastNames = [];
+  for (const p of dashboardPersons) {
+    if (!(p.related_persons || []).length || covered.has(p.id)) continue;
+    const key = p.last_name || "—";
+    if (!legacyLastNames.includes(key)) legacyLastNames.push(key);
+  }
+  legacyLastNames.forEach((lastName, i) => {
+    family.set(`last:${lastName}`, `${code}-F${String(maxFamilyNum + i + 1).padStart(4, "0")}`);
   });
 
-  const covered = familyMemberIdSet();
-  dashboardPersons
-    .filter((p) => !(p.related_persons || []).length && !covered.has(p.id))
-    .sort((a, b) => (a.created_at?.seconds ?? 0) - (b.created_at?.seconds ?? 0))
-    .forEach((p, i) => {
-      person.set(p.id, `${code}-I${String(i + 1).padStart(4, "0")}`);
-    });
+  // ── Individuals — persisted, static ───────────────────────────────────────
+  // Which real family (if any) a person currently belongs to only decides the
+  // FORMAT the first time their id is assigned — it's never revisited after
+  // that, even if they later change families or leave one.
+  const familyIdByMember = new Map();
+  for (const rec of familyRecords) {
+    for (const mid of rec.member_ids || []) familyIdByMember.set(mid, rec.display_id);
+  }
+
+  for (const p of dashboardPersons) {
+    let id = p.display_id;
+    if (!id) {
+      const famId = familyIdByMember.get(p.id);
+      if (famId) {
+        const famIPart = famId.replace("-F", "-I");
+        const nextSuffix = (familySuffixMax.get(famIPart) || 0) + 1;
+        familySuffixMax.set(famIPart, nextSuffix);
+        id = `${famIPart}-${String(nextSuffix).padStart(2, "0")}`;
+      } else {
+        maxStandaloneNum += 1;
+        id = `${code}-I${String(maxStandaloneNum).padStart(4, "0")}`;
+      }
+      p.display_id = id;
+      try {
+        await updateDoc(personDoc(p.id), { display_id: id });
+      } catch (err) {
+        console.warn("[admin] failed to persist person display_id:", err);
+      }
+    }
+    person.set(p.id, id);
+  }
 
   entityIds = { family, person };
 }
@@ -451,9 +545,13 @@ function renderFamilySection() {
 
   const q = (document.getElementById("familySearchInput")?.value || "").trim().toLowerCase();
   if (q) {
-    // Match the family name itself ("山田家") or any member's name/kaimyo.
+    // Match the family name ("山田家"), the family's own display id, or any
+    // member's name/kaimyo/display id.
     families = families.filter(
-      (f) => f.name.toLowerCase().includes(q) || f.members.some((p) => matchesProfileQuery(p, q))
+      (f) =>
+        f.name.toLowerCase().includes(q) ||
+        (entityIds.family.get(f.key) || "").toLowerCase().includes(q) ||
+        f.members.some((p) => matchesProfileQuery(p, q))
     );
   }
   families.sort((a, b) => a.name.localeCompare(b.name));
@@ -595,7 +693,7 @@ async function deleteFamily(key) {
     }
 
     selectedFamilyKey = null;
-    recomputeEntityIds();
+    await recomputeEntityIds();
     renderFamilyIndividualPanel();
     updateSearchTabCounts();
     setStatus(t("status.familyDeleted", { name: fam.name }), "success");
@@ -704,7 +802,7 @@ async function addMemberToFamily(key, personId) {
     const snap = await getDocs(personsCollection());
     allProfiles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     dashboardPersons = allProfiles;
-    recomputeEntityIds();
+    await recomputeEntityIds();
     selectedFamilyKey = `rec:${recordId}`; // legacy families get a new key once promoted
     renderFamilySection();
     updateSearchTabCounts();
@@ -1624,7 +1722,7 @@ async function deleteProfile(person) {
         fam.member_ids = fam.member_ids.filter((id) => id !== person.id);
       }
     }
-    recomputeEntityIds();
+    await recomputeEntityIds();
     // Delete can be triggered from either Search tab — refresh both so the
     // removed row disappears immediately regardless of which one is showing.
     renderFamilyIndividualPanel();
@@ -1878,7 +1976,11 @@ export function initAdminPortal() {
 
   // Sign out button
   document.getElementById("signOutBtn")?.addEventListener("click", async () => {
-    sessionStorage.clear();
+    // Targeted removal, not localStorage.clear() — admin_lang/ss_theme live in
+    // localStorage too and signing out shouldn't reset those.
+    localStorage.removeItem("ss_tenant_id");
+    localStorage.removeItem("ss_role");
+    localStorage.removeItem("ss_display_name");
     await signOut(auth);
     window.location.href = "login.html";
   });

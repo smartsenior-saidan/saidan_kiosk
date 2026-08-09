@@ -10,7 +10,7 @@ import {
   collection,
   GoogleAuthProvider,
   signInWithPopup,
-} from "./firebase.js?v=10";
+} from "./firebase.js?v=11";
 
 const form      = document.getElementById("loginForm");
 const emailEl   = document.getElementById("email");
@@ -104,14 +104,18 @@ async function completeSignIn(user) {
   // Refuse rather than silently dropping into a shared "demo" tenant.
   if (!grant) {
     await signOut(auth);
-    sessionStorage.clear();
+    // Targeted removal, not localStorage.clear() — admin_lang/ss_theme live in
+    // localStorage too and a failed sign-in shouldn't reset those.
+    localStorage.removeItem("ss_tenant_id");
+    localStorage.removeItem("ss_role");
+    localStorage.removeItem("ss_display_name");
     showStatus("このアカウントはまだ霊園・墓地に紐付けられていません。SmartSenior にご連絡ください。");
     return false;
   }
 
-  sessionStorage.setItem("ss_tenant_id", grant.tenantId);
-  sessionStorage.setItem("ss_role", grant.role);
-  sessionStorage.setItem("ss_display_name", grant.displayName || user.email);
+  localStorage.setItem("ss_tenant_id", grant.tenantId);
+  localStorage.setItem("ss_role", grant.role);
+  localStorage.setItem("ss_display_name", grant.displayName || user.email);
 
   // Replace (not push) so the login page never sits in browser history —
   // pressing Back from the dashboard shouldn't be able to land back here.

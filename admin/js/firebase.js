@@ -10,7 +10,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import {
   getAuth,
   setPersistence,
-  browserSessionPersistence,
+  browserLocalPersistence,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   onAuthStateChanged,
@@ -71,14 +71,16 @@ const firebaseConfig = {
   measurementId: ENV.FIREBASE_MEASUREMENT_ID || FALLBACK_CONFIG.measurementId,
 };
 
-// Active tenant — set from the logged-in user's Firestore record (stored in sessionStorage by login.js).
+// Active tenant — set from the logged-in user's Firestore record (stored in localStorage by login.js).
+// localStorage (not sessionStorage) so a second tab shares the same signed-in
+// tenant instead of finding nothing and falling back to "demo-tenant".
 export const TENANT_ID =
-  sessionStorage.getItem("ss_tenant_id") ||
+  localStorage.getItem("ss_tenant_id") ||
   ENV.TENANT_ID ||
   "demo-tenant";
 
-export const ROLE = sessionStorage.getItem("ss_role") || "admin";
-export const DISPLAY_NAME = sessionStorage.getItem("ss_display_name") || "";
+export const ROLE = localStorage.getItem("ss_role") || "admin";
+export const DISPLAY_NAME = localStorage.getItem("ss_display_name") || "";
 export const DEVICE_ID = ENV.DEVICE_ID || "admin-001";
 
 // --- Initialize ------------------------------------------------------------
@@ -88,11 +90,10 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const auth = getAuth(app);
 
-// Session-only persistence: signing in stays valid while this browser tab/session
-// is open (surviving the login.html -> index.html redirect), but closing the
-// browser clears it. Prevents a login from silently auto-restoring forever on a
-// shared/demo device — every fresh session must sign in again.
-setPersistence(auth, browserSessionPersistence).catch((err) =>
+// Local persistence: signing in stays valid across tabs and browser restarts,
+// on the assumption that admin devices are personal staff machines rather than
+// shared/public terminals. Explicit sign-out (admin.js) is what ends a session.
+setPersistence(auth, browserLocalPersistence).catch((err) =>
   console.warn("[admin] failed to set auth persistence:", err)
 );
 
