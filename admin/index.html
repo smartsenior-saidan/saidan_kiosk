@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="css/style.css?v=10" />
-    <link rel="stylesheet" href="css/admin.css?v=23" />
+    <link rel="stylesheet" href="css/admin.css?v=24" />
   </head>
   <body>
     <div class="app-shell">
@@ -174,7 +174,7 @@
                       <p class="field-hint" data-i18n="hint.manualAge">Only used when the date of birth is unknown. If both dates above are filled in, age is calculated automatically and this is ignored.</p>
                     </div>
 
-                    <div class="form-row">
+                    <div class="form-row form-row-3">
                       <div class="field">
                         <label for="plotSection" data-i18n="form.plotSection">Section</label>
                         <input id="plotSection" type="text" placeholder="e.g. C" data-i18n-ph="ph.plotSection" />
@@ -182,6 +182,10 @@
                       <div class="field">
                         <label for="plotRow" data-i18n="form.plotRow">Row / plot number</label>
                         <input id="plotRow" type="text" placeholder="e.g. 12" data-i18n-ph="ph.plotRow" />
+                      </div>
+                      <div class="field">
+                        <label for="plotCol" data-i18n="form.plotCol">Column</label>
+                        <input id="plotCol" type="text" placeholder="e.g. 3" data-i18n-ph="ph.plotCol" />
                       </div>
                     </div>
 
@@ -336,7 +340,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=66";
+      import { initAdminPortal } from "./js/admin.js?v=68";
       initAdminPortal();
     </script>
   </body>

@@ -31,7 +31,7 @@ import {
   personMediaCollection,
   personMediaDoc,
 } from "./firebase.js?v=11";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=41";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=42";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -99,14 +99,25 @@ function matchesDisplayIdQuery(person, rawQuery) {
   return !!person.display_id && person.display_id.toLowerCase().includes(q);
 }
 
+// Matches a person against their burial location — section, row, column, or
+// the combined "C-12" plot label (section-row only, see readForm) — so a
+// staffer can look someone up from a plot number without knowing their name.
+function matchesPlotQuery(person, rawQuery) {
+  const q = (rawQuery || "").trim().toLowerCase();
+  if (!q) return false;
+  const fields = [person.plot_section, person.plot_row, person.plot_col, person.plot];
+  return fields.some((f) => f && String(f).toLowerCase().includes(q));
+}
+
 // The search used by the profile lists (dashboard, family, individual):
-// matches on name (first/last, kanji or kana), posthumous name (kaimyo), or
-// the person's own display id.
+// matches on name (first/last, kanji or kana), posthumous name (kaimyo),
+// display id, or plot location (section/row).
 function matchesProfileQuery(person, rawQuery) {
   return (
     matchesNameQuery(person, rawQuery) ||
     matchesKaimyoQuery(person, rawQuery) ||
-    matchesDisplayIdQuery(person, rawQuery)
+    matchesDisplayIdQuery(person, rawQuery) ||
+    matchesPlotQuery(person, rawQuery)
   );
 }
 let dashboardPersons = [];  // cached for the family/individual panel search
@@ -862,6 +873,7 @@ function renderPersonsTable(container, persons, actionPool) {
             <th class="sortable" data-sort="death_date">${t("table.passed")} ${sortIcon("death_date")}</th>
             <th>${t("table.section")}</th>
             <th>${t("table.row")}</th>
+            <th>${t("table.col")}</th>
             <th>${t("table.actions")}</th>
           </tr>
         </thead>
@@ -910,6 +922,7 @@ function profileRow(p, full = false) {
         <td>${esc(death)}</td>
         <td>${esc(p.plot_section || "—")}</td>
         <td>${esc(p.plot_row || "—")}</td>
+        <td>${esc(p.plot_col || "—")}</td>
         <td>
           <div class="table-actions">
             <button class="btn-secondary" data-action="qr"     data-id="${p.id}" data-name="${esc(p.last_name || p.first_name || '')}" title="QR Code">QR</button>
@@ -1016,7 +1029,8 @@ function readForm() {
   const get = (id) => (document.getElementById(id)?.value || "").trim();
   const section = get("plotSection");
   const row     = get("plotRow");
-  const plot    = [section, row].filter(Boolean).join("-");
+  const col     = get("plotCol");
+  const plot    = [section, row].filter(Boolean).join("-"); // section-row only — see updatePlotPreview
   const bgPreset = bgPresets.find((p) => p.path === selectedBgPath) || null;
   return {
     first_name: get("firstName"),
@@ -1029,7 +1043,8 @@ function readForm() {
     manual_age: get("manualAge") ? Number(get("manualAge")) : null,
     plot_section: section,
     plot_row: row,
-    plot,          // combined for backward-compat display/search
+    plot_col: col,
+    plot,          // combined for backward-compat display/search — section-row only, column deliberately excluded
     biography: get("biography"),
     // related_persons is deliberately absent: syncFamilyMembership() owns it,
     // and leaving it out of the update keeps pre-existing links intact.
@@ -1572,6 +1587,7 @@ async function loadForEdit(person) {
   set("manualAge",      person.manual_age != null ? String(person.manual_age) : "");
   set("plotSection",    person.plot_section);
   set("plotRow",        person.plot_row);
+  set("plotCol",        person.plot_col);
   set("biography",      person.biography);
   updatePlotPreview();
   selectedBgPath = person.background_path || null;
