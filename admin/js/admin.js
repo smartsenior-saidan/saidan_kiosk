@@ -31,7 +31,7 @@ import {
   personMediaCollection,
   personMediaDoc,
 } from "./firebase.js?v=11";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=42";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=43";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -180,6 +180,93 @@ async function initSiteSwitcher(siteEl) {
 function personName(p) {
   if (!p) return "";
   return [p.last_name, p.first_name].filter(Boolean).join(" ").trim();
+}
+
+// ── CSV export ───────────────────────────────────────────────────────────────
+// An on-demand copy of everything staff have typed in, downloaded straight to
+// the operator's own machine. Deliberately NOT wired to any automatic upload:
+// these rows are real deceased individuals' names, dates and biographies, and
+// this repository is public — the same reason scripts/backups/ is gitignored.
+//
+// This complements, rather than replaces, the Firestore-side backups (PITR +
+// the daily backup schedule): those are what you actually restore from, this
+// is what a person can hold, read and archive themselves.
+
+/** One CSV cell, escaped per RFC 4180. */
+function csvCell(v) {
+  if (v === null || v === undefined) return "";
+  const s = String(v);
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** Firestore timestamp -> sortable local "YYYY-MM-DD HH:MM" (blank if unset). */
+function csvDate(ts) {
+  if (!ts) return "";
+  const d = typeof ts.toDate === "function" ? ts.toDate()
+          : ts.seconds ? new Date(ts.seconds * 1000)
+          : null;
+  if (!d || isNaN(d)) return "";
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/** Every profile at this site as a CSV file, downloaded locally. */
+function exportProfilesCsv() {
+  // Always the full set, never the current search filter — this is a backup,
+  // so a half-filtered export would be a quietly incomplete one.
+  const people = allProfiles;
+  if (!people.length) {
+    setStatus(t("csv.empty"), "error");
+    return;
+  }
+
+  // Person -> family name, covering both named family records and the legacy
+  // related_persons groupings, so the CSV matches what the Family tab shows.
+  const famByPerson = new Map();
+  for (const f of buildFamilies()) {
+    for (const m of f.members) famByPerson.set(m.id, f.name);
+  }
+  // Related people are exported as their display ids (stable, and each one
+  // resolves to another row in this same file) rather than raw Firestore ids.
+  const displayById = new Map(people.map((p) => [p.id, p.display_id || p.id]));
+
+  const columns = [
+    ["ID",          (p) => p.display_id],
+    ["姓",          (p) => p.last_name],
+    ["名",          (p) => p.first_name],
+    ["姓（かな）",   (p) => p.last_name_kana],
+    ["名（かな）",   (p) => p.first_name_kana],
+    ["戒名",        (p) => p.kaimyo || p.posthumous_name],
+    ["生年月日",     (p) => p.birth_date],
+    ["没年月日",     (p) => p.death_date],
+    ["享年",        (p) => p.manual_age],
+    ["区",          (p) => p.plot_section],
+    ["番号",        (p) => p.plot_row],
+    ["列",          (p) => p.plot_col],
+    ["家",          (p) => famByPerson.get(p.id)],
+    ["関係者",       (p) => (p.related_persons || []).map((id) => displayById.get(id) || id).join(" / ")],
+    ["メッセージ",    (p) => p.biography],
+    ["登録日時",     (p) => csvDate(p.created_at)],
+    ["更新日時",     (p) => csvDate(p.updated_at)],
+  ];
+
+  const rows = [...people]
+    .sort((a, b) => (a.display_id || "").localeCompare(b.display_id || ""))
+    .map((p) => columns.map(([, read]) => csvCell(read(p))).join(","));
+  const csv = [columns.map(([head]) => csvCell(head)).join(","), ...rows].join("\r\n");
+
+  // The BOM is what makes Excel on Windows read this as UTF-8; without it every
+  // Japanese character in the file arrives as mojibake.
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const stamp = csvDate({ seconds: Date.now() / 1000 }).slice(0, 10);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `saidan-${TENANT_ID}-${stamp}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  setStatus(t("csv.done", { n: people.length }), "success");
 }
 
 // ── Section navigation ───────────────────────────────────────────────────────
@@ -2062,6 +2149,9 @@ export function initAdminPortal() {
   // Dashboard family/individual panel search
   document.getElementById("familySearchInput")?.addEventListener("input", renderFamilyIndividualPanel);
   document.getElementById("individualSearchInput")?.addEventListener("input", renderFamilyIndividualPanel);
+
+  // Local CSV backup of every profile at this site
+  document.getElementById("exportCsvBtn")?.addEventListener("click", exportProfilesCsv);
 
   // Form submit
   document.getElementById("profileForm")?.addEventListener("submit", handleSave);

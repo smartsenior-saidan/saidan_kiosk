@@ -96,6 +96,7 @@
                   <h3 class="card-title" data-i18n="fi.individualMembers">Individual Members</h3>
                   <div class="card-row-actions">
                     <input id="individualSearchInput" type="search" placeholder="Filter by name…" data-i18n-ph="ph.filterName" aria-label="Filter individual members" />
+                    <button type="button" class="btn-secondary" id="exportCsvBtn" data-i18n="btn.exportCsv">Download CSV</button>
                   </div>
                 </div>
                 <div id="fiIndividualList"><div class="spinner"></div></div>
@@ -340,7 +341,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=68";
+      import { initAdminPortal } from "./js/admin.js?v=69";
       initAdminPortal();
     </script>
   </body>

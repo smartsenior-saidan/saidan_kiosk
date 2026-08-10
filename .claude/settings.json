@@ -26,7 +26,8 @@
       "Bash(node scripts/_tenant_audit.js)",
       "Bash(echo \"--- exit $?\")",
       "Read(//Users/linusfujisawa/Desktop/Programming/SmartSenior/**)",
-      "Read(//Users/linusfujisawa/Desktop/Programming/SmartSenior/columbarium/**)"
+      "Read(//Users/linusfujisawa/Desktop/Programming/SmartSenior/columbarium/**)",
+      "Bash(gcloud firestore *)"
     ]
   }
 }
