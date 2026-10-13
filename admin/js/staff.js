@@ -36,7 +36,7 @@ import {
   superAdminsCollection,
   COLLECTIONS,
 } from "./firebase.js?v=12";
-import { t } from "./i18n.js?v=45";
+import { t } from "./i18n.js?v=46";
 
 // Helpers handed in by admin.js so this module shares its toast, confirm
 // dialog and escaper instead of growing its own.
@@ -279,11 +279,15 @@ function syncFormChrome() {
   e.uidField.classList.toggle("hidden", !!editing || mode() !== "link");
   e.uid.required = !editing && mode() === "link";
 
-  // Email is the Auth identity — it can't be edited from here, only shown.
-  e.email.disabled = !!editing;
+  // Email is the Auth identity — it can't be changed from here. A record made
+  // in the console has none on file, so for those it may be filled in once;
+  // that only labels the row and feeds the reset-mail button, it never touches
+  // the sign-in address itself.
+  const canAddEmail = !!editing && !editing.email;
+  e.email.disabled = !!editing && !canAddEmail;
   e.email.required = !editing && mode() === "create";
   e.emailHint.textContent = editing
-    ? t("staff.emailLocked")
+    ? (canAddEmail ? t("staff.emailAddHint") : t("staff.emailLocked"))
     : mode() === "create" ? t("staff.createHint") : t("staff.linkEmailHint");
 
   e.tenantField.classList.toggle("hidden", isSuper);
@@ -365,7 +369,7 @@ async function handleSubmit(ev) {
   e.save.disabled = true;
   try {
     if (editing) {
-      await saveEdit({ display_name, role, tenantId, default_tenant });
+      await saveEdit({ display_name, email, role, tenantId, default_tenant });
     } else if (mode() === "link") {
       const uid = e.uid.value.trim();
       if (!uid) { showFormStatus(t("staff.err.uidRequired")); e.uid.focus(); return; }
@@ -411,12 +415,14 @@ async function createGrant({ uid, email, display_name, role, tenantId, default_t
   await setDoc(ref, data);
 }
 
-async function saveEdit({ display_name, role, tenantId, default_tenant }) {
+async function saveEdit({ display_name, email, role, tenantId, default_tenant }) {
   const from = editing;
   const moved = role !== from.role || (role === "staff" && tenantId !== from.tenantId);
 
   const data = { display_name, updated_at: serverTimestamp() };
-  if (from.email) data.email = from.email;
+  // Keep the email on file; a record that had none may gain one here.
+  const keptEmail = from.email || email;
+  if (keptEmail) data.email = keptEmail;
   if (role === "super" && default_tenant) data.default_tenant = default_tenant;
 
   if (moved) {
