@@ -30,8 +30,10 @@ import {
   ROLE,
   personMediaCollection,
   personMediaDoc,
-} from "./firebase.js?v=11";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=43";
+  DISPLAY_NAME,
+} from "./firebase.js?v=12";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=44";
+import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=1";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -302,6 +304,7 @@ function showSection(name, opts = {}) {
   // Search holds both the Family and Individual tabs — load once and render
   // whichever tab is currently active.
   if (name === "dashboard") loadSearchData();
+  if (name === "staff") openStaffPanel();
 
   // Give this section its own browser-history entry so Back/Forward moves
   // between in-app sections instead of leaving the app. Skipped when we're
@@ -2065,6 +2068,27 @@ function retranslateDynamic() {
     renderFamilyIndividualPanel();
     updateSearchTabCounts();
   }
+  if (currentSection === "staff") renderStaffPanel();
+  renderSessionInfo();
+}
+
+// ── Session line (top bar) ───────────────────────────────────────────────────
+// "Who am I, with what role, at which site" — always visible so a super admin
+// who has just switched sites, or a staff member on a shared PC, can tell at
+// a glance. The site name is resolved from the tenant doc once it loads.
+
+let _sessionSiteName = "";
+
+function renderSessionInfo() {
+  const wrap = document.getElementById("sessionInfo");
+  if (!wrap) return;
+  const user = auth.currentUser;
+  const who = DISPLAY_NAME || user?.email || "";
+  const email = user?.email && user.email !== who ? user.email : "";
+  setText("sessionWho", email ? `${who} <${email}>` : who);
+  setText("sessionRole", ROLE === "super" ? t("session.role.super") : t("session.role.admin"));
+  setText("sessionSite", _sessionSiteName || TENANT_ID || "—");
+  wrap.hidden = !who;
 }
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
@@ -2074,8 +2098,16 @@ export function initAdminPortal() {
   onAuthStateChanged(auth, (user) => {
     if (!user) {
       window.location.href = "login.html";
+      return;
     }
+    renderSessionInfo();
   });
+
+  // Staff management is for super admins only. ROLE comes from sessionStorage,
+  // so this only decides what the sidebar shows — firestore.rules is what
+  // actually refuses a tampered session on every read and write.
+  if (ROLE === "super") document.getElementById("navStaff")?.classList.remove("hidden");
+  initStaffPanel({ esc, setStatus, confirmDialog });
 
   // Sign out button
   document.getElementById("signOutBtn")?.addEventListener("click", async () => {
@@ -2116,13 +2148,18 @@ export function initAdminPortal() {
   } else if (siteEl) {
     siteEl.textContent = prettySite;
     siteEl.title = TENANT_ID;
-    getDoc(doc(db, COLLECTIONS.tenants, TENANT_ID))
-      .then((snap) => {
-        const name = snap.exists() ? (snap.data().name || "").trim() : "";
-        if (name) { siteEl.textContent = name; siteEl.title = name; }
-      })
-      .catch(() => {});
   }
+  _sessionSiteName = prettySite;
+  renderSessionInfo();
+  getDoc(doc(db, COLLECTIONS.tenants, TENANT_ID))
+    .then((snap) => {
+      const name = snap.exists() ? (snap.data().name || "").trim() : "";
+      if (!name) return;
+      _sessionSiteName = name;
+      if (siteEl && ROLE !== "super") { siteEl.textContent = name; siteEl.title = name; }
+      renderSessionInfo();
+    })
+    .catch(() => {});
 
   // Sidebar nav
   document.querySelectorAll("[data-section]").forEach((el) => {

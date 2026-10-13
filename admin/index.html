@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="css/style.css?v=10" />
-    <link rel="stylesheet" href="css/admin.css?v=24" />
+    <link rel="stylesheet" href="css/admin.css?v=25" />
   </head>
   <body>
     <div class="app-shell">
@@ -34,6 +34,13 @@
             </span>
             <span data-i18n="nav.dashboard">Search</span>
           </button>
+          <!-- Super admins only — admin.js unhides this once it knows the role -->
+          <button class="nav-item hidden" data-section="staff" id="navStaff">
+            <span class="nav-icon">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a4 4 0 100 8 4 4 0 000-8zM3 16a7 7 0 0114 0v1a1 1 0 01-1 1H4a1 1 0 01-1-1v-1z"/><path d="M15.5 3.5a1 1 0 011 1V6h1.5a1 1 0 110 2h-1.5v1.5a1 1 0 11-2 0V8H13a1 1 0 110-2h1.5V4.5a1 1 0 011-1z"/></svg>
+            </span>
+            <span data-i18n="nav.staff">Staff</span>
+          </button>
         </nav>
       </aside>
 
@@ -49,6 +56,15 @@
             <span class="page-subtitle" id="pageSubtitle"></span>
           </div>
           <div class="top-bar-right">
+            <!-- Who is signed in, with what role, at which site -->
+            <div class="session-info" id="sessionInfo" hidden>
+              <span class="session-who" id="sessionWho"></span>
+              <span class="session-meta">
+                <span class="session-role" id="sessionRole"></span>
+                <span class="session-sep">·</span>
+                <span class="session-site" id="sessionSite"></span>
+              </span>
+            </div>
             <div class="lang-switch" id="langSwitch">
               <button type="button" data-lang="en">EN</button>
               <button type="button" data-lang="ja">日本語</button>
@@ -316,6 +332,80 @@
             </div>
           </section>
 
+          <!-- ══ STAFF — super admins only ══ -->
+          <section id="sec-staff" class="section">
+            <div class="form-layout staff-layout">
+
+              <div class="card">
+                <h3 class="card-title" id="staffFormTitle" data-i18n="staff.newTitle">Register staff</h3>
+                <div id="staffFormStatus" class="form-status hidden"></div>
+
+                <form id="staffForm" autocomplete="off">
+                  <div class="field staff-mode" id="staffModeWrap">
+                    <label class="staff-mode-option">
+                      <input type="radio" name="staffMode" id="staffModeCreate" value="create" checked />
+                      <span data-i18n="staff.mode.create">Create a new account</span>
+                    </label>
+                    <label class="staff-mode-option">
+                      <input type="radio" name="staffMode" id="staffModeLink" value="link" />
+                      <span data-i18n="staff.mode.link">Link an existing account (UID)</span>
+                    </label>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="field">
+                      <label for="staffEmail" data-i18n="staff.email">Email</label>
+                      <input id="staffEmail" type="email" inputmode="email" placeholder="staff@example.jp" />
+                      <p class="field-hint" id="staffEmailHint"></p>
+                    </div>
+                    <div class="field">
+                      <label for="staffDisplayName" data-i18n="staff.displayName">Display name</label>
+                      <input id="staffDisplayName" type="text" required maxlength="120" placeholder="山田 太郎" />
+                    </div>
+                  </div>
+
+                  <div class="field hidden" id="staffUidField">
+                    <label for="staffUid">UID</label>
+                    <input id="staffUid" type="text" spellcheck="false" placeholder="e.g. 7Hq2…" />
+                    <p class="field-hint" data-i18n="staff.uidHint">Copy the UID from Firebase console → Authentication → Users.</p>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="field">
+                      <label for="staffRole" data-i18n="staff.role">Role</label>
+                      <select id="staffRole">
+                        <option value="staff" data-i18n="staff.role.staff">Site staff</option>
+                        <option value="super" data-i18n="staff.role.super">Super admin (all sites)</option>
+                      </select>
+                    </div>
+                    <div class="field" id="staffTenantField">
+                      <label for="staffTenant" data-i18n="staff.tenant">Memorial site</label>
+                      <select id="staffTenant"></select>
+                    </div>
+                    <div class="field hidden" id="staffDefaultField">
+                      <label for="staffDefaultTenant" data-i18n="staff.defaultTenant">Site opened after sign-in</label>
+                      <select id="staffDefaultTenant"></select>
+                    </div>
+                  </div>
+
+                  <div class="form-actions staff-actions">
+                    <button type="button" class="btn-secondary hidden" id="staffCancelBtn" data-i18n="btn.cancel">Cancel</button>
+                    <button type="submit" id="staffSaveBtn" data-i18n="staff.save">Register</button>
+                  </div>
+                </form>
+              </div>
+
+              <div class="card">
+                <div class="card-row" style="margin-bottom:16px">
+                  <h3 class="card-title" data-i18n="staff.listTitle">Registered staff</h3>
+                </div>
+                <p class="field-hint" style="margin:-8px 0 14px" data-i18n="staff.listHint">Removing someone here revokes their sign-in immediately. The account itself stays in Firebase Authentication.</p>
+                <div id="staffList"><div class="spinner"></div></div>
+              </div>
+
+            </div>
+          </section>
+
         </main>
       </div>
     </div>
@@ -341,7 +431,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=69";
+      import { initAdminPortal } from "./js/admin.js?v=70";
       initAdminPortal();
     </script>
   </body>

@@ -66,31 +66,51 @@ service cloud.firestore {
     // ══ END MIGRATION ════════════════════════════════════════════════════════
 
     // ── Staff accounts ──────────────────────────────────────────────────────
-    // All console-managed: an account that could grant itself access is not an
-    // access control. A user may read their OWN membership document — that is
-    // how login discovers which tenant to open — but not anyone else's, so the
+    // Managed by super admins from the admin panel's Staff tab (and still by
+    // hand in the console). A tenant staff member can never grant anyone
+    // access, themselves included: only /super_admins membership may write
+    // here, and that membership itself is only writable by another super
+    // admin. A user may read their OWN membership document — that is how
+    // login discovers which tenant to open — but not anyone else's, so the
     // staff list of a site is not readable by its visitors.
     //
     //   admins/{tenantId}/staff/{uid}  grants that one site
     //   super_admins/{uid}             grants every site
     //
+    // A membership document carries a display_name and (for records made from
+    // the panel) the email it was created for, so the Staff tab can show who a
+    // UID is. Login reads only display_name / default_tenant; the rest is
+    // informational and never consulted for access.
+    //
     // The {docId} on /admins matches two different things during the migration:
     // the tenant containers, and the pre-split records still keyed by UID. The
     // read rule below covers the legacy case (docId == your own uid); the
     // containers themselves hold nothing worth reading.
+    function validStaffRecord() {
+      return request.resource.data.keys().hasOnly(
+               ['display_name', 'email', 'default_tenant', 'created_at', 'created_by', 'updated_at'])
+        && request.resource.data.display_name is string
+        && request.resource.data.display_name.size() > 0
+        && request.resource.data.display_name.size() <= 120;
+    }
+
     match /admins/{docId} {
       allow read:  if isSignedIn() && request.auth.uid == docId;
       allow write: if false;
 
       match /staff/{uid} {
-        allow read:  if isSignedIn() && request.auth.uid == uid;
-        allow write: if false;
+        allow read:   if isSuperAdmin() || (isSignedIn() && request.auth.uid == uid);
+        allow create, update: if isSuperAdmin() && validStaffRecord();
+        allow delete: if isSuperAdmin();
       }
     }
 
     match /super_admins/{uid} {
-      allow read:  if isSignedIn() && request.auth.uid == uid;
-      allow write: if false;
+      allow read:   if isSuperAdmin() || (isSignedIn() && request.auth.uid == uid);
+      allow create, update: if isSuperAdmin() && validStaffRecord();
+      // A super admin cannot remove their own grant: the last one standing
+      // would otherwise be able to lock everyone out of staff management.
+      allow delete: if isSuperAdmin() && request.auth.uid != uid;
     }
 
     // ── Tenant configuration + all memorial content ─────────────────────────

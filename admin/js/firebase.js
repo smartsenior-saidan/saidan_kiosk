@@ -6,12 +6,14 @@
 // read from `window.__ENV__` if a host injects it, otherwise from the inline
 // fallback below. Copy your .env values into FALLBACK_CONFIG for local dev.
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth,
   setPersistence,
   browserLocalPersistence,
+  inMemoryPersistence,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   onAuthStateChanged,
   signOut,
@@ -106,6 +108,32 @@ export {
   signInWithPopup,
 };
 
+/**
+ * Create a Firebase Auth user WITHOUT touching the signed-in session.
+ *
+ * createUserWithEmailAndPassword signs the new user in on whichever Auth
+ * instance it runs against, which on the main app would silently replace the
+ * super admin's session with the new staff member's. So this spins up a
+ * throwaway second app on the same config, creates the user there, and tears
+ * it down again. Nothing is persisted for the throwaway app.
+ *
+ * Returns the new user's uid. Throws the Firebase error unchanged
+ * (e.g. auth/email-already-in-use) so callers can explain it.
+ */
+export async function createAuthUserDetached(email, password) {
+  const sideApp = initializeApp(firebaseConfig, `staff-create-${Date.now()}`);
+  const sideAuth = getAuth(sideApp);
+  try {
+    await setPersistence(sideAuth, inMemoryPersistence);
+    const { user } = await createUserWithEmailAndPassword(sideAuth, email, password);
+    const uid = user.uid;
+    await signOut(sideAuth);
+    return uid;
+  } finally {
+    deleteApp(sideApp).catch(() => {});
+  }
+}
+
 // Collection name constants (single source of truth).
 //
 // Memorial content lives UNDER the tenant document:
@@ -122,7 +150,29 @@ export const COLLECTIONS = {
   individuals: "individuals",
   families: "families",
   admins: "admins",
+  staff: "staff",
+  superAdmins: "super_admins",
 };
+
+/** admins/{tenantId}/staff — the membership documents for one memorial site. */
+export function staffCollection(tenantId) {
+  return collection(db, COLLECTIONS.admins, tenantId, COLLECTIONS.staff);
+}
+
+/** admins/{tenantId}/staff/{uid} */
+export function staffDoc(tenantId, uid) {
+  return doc(staffCollection(tenantId), uid);
+}
+
+/** super_admins — accounts that administer every site. */
+export function superAdminsCollection() {
+  return collection(db, COLLECTIONS.superAdmins);
+}
+
+/** super_admins/{uid} */
+export function superAdminDoc(uid) {
+  return doc(superAdminsCollection(), uid);
+}
 
 /** The active tenant's document — the parent of all memorial content. */
 export function tenantDoc() {
