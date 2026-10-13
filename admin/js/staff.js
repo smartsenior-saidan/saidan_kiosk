@@ -35,7 +35,7 @@ import {
   superAdminDoc,
   superAdminsCollection,
   COLLECTIONS,
-} from "./firebase.js?v=12";
+} from "./firebase.js?v=13";
 import { t } from "./i18n.js?v=46";
 
 // Helpers handed in by admin.js so this module shares its toast, confirm

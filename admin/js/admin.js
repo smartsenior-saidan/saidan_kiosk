@@ -31,7 +31,7 @@ import {
   personMediaCollection,
   personMediaDoc,
   DISPLAY_NAME,
-} from "./firebase.js?v=12";
+} from "./firebase.js?v=13";
 import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=46";
 import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=2";
 

@@ -10,7 +10,7 @@ import {
   collection,
   GoogleAuthProvider,
   signInWithPopup,
-} from "./firebase.js?v=12";
+} from "./firebase.js?v=13";
 
 const form      = document.getElementById("loginForm");
 const emailEl   = document.getElementById("email");

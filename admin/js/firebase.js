@@ -92,6 +92,11 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const auth = getAuth(app);
 
+// Every email Firebase Auth sends on our behalf (password reset / setup, and
+// the hosted page its link opens) is localised from this. Without it the
+// default is English, which is what staff were getting.
+auth.languageCode = "ja";
+
 // Local persistence: signing in stays valid across tabs and browser restarts,
 // on the assumption that admin devices are personal staff machines rather than
 // shared/public terminals. Explicit sign-out (admin.js) is what ends a session.
