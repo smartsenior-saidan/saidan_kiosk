@@ -32,13 +32,13 @@ import {
   personMediaDoc,
   DISPLAY_NAME,
 } from "./firebase.js?v=13";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=47";
-import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=3";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=48";
+import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=4";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
 let stagedFiles = [];       // { file, type, previewUrl } — new gallery uploads
-let stagedCover = null;    // { file, previewUrl } — new cover upload
+let stagedCover = null;    // { file, previewUrl } for an upload, or { preset, previewUrl } for a flower stand-in
 let existingCover = null;  // { id, storage_url, storage_path } — loaded from Firestore
 let existingGallery = [];  // [{ id, storage_url, storage_path, file_type }] — loaded from Firestore
 let removedMediaIds = [];  // Firestore media doc IDs queued for deletion on save
@@ -1637,14 +1637,26 @@ async function handleSave(e) {
     }
     removedMediaIds = [];
 
-    const totalUploads = (stagedCover ? 1 : 0) + stagedFiles.length;
+    // A preset cover is a plain media doc pointing at a kiosk-served image —
+    // nothing to upload, so it is written outside the upload block below.
+    if (stagedCover?.preset) {
+      await addDoc(
+        personMediaCollection(personId),
+        withTenant({
+          file_type: "photo", role: "cover", preset: stagedCover.preset,
+          storage_url: stagedCover.previewUrl, storage_path: null, display_order: -1,
+        })
+      );
+    }
+
+    const totalUploads = (stagedCover?.file ? 1 : 0) + stagedFiles.length;
     if (totalUploads > 0) {
       setFormStatus(t("status.uploading", { n: totalUploads }), "info");
 
       const existingSnap = await getDocs(personMediaCollection(personId));
       let order = existingSnap.size;
 
-      if (stagedCover) {
+      if (stagedCover?.file) {
         setProgress(0);
         const { url, path } = await uploadOne(stagedCover.file, personId, setProgress);
         await addDoc(
@@ -1909,6 +1921,18 @@ async function deleteProfile(person) {
 const BG_PRESET_COUNT = 5;
 const BG_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
 
+// Stand-in cover images for a person with no portrait. Served by the kiosk
+// itself (kiosk/img/cover/), so the profile page shows them like any other
+// cover and its service worker caches them — nothing to upload to Storage.
+// A chosen preset is saved as an ordinary role:"cover" media doc whose
+// storage_url points here and whose storage_path is null; the delete path
+// already skips Storage when there is no path.
+const KIOSK_ORIGIN = "https://kiosk.saidans.org";
+const COVER_PRESETS = [
+  { key: "flowers-white", url: `${KIOSK_ORIGIN}/img/cover/flowers-white.jpg` },
+  { key: "lotus-pink",    url: `${KIOSK_ORIGIN}/img/cover/lotus-pink.jpg` },
+];
+
 async function resolveBgPreset(n) {
   for (const base of [`${TENANT_ID}/backgrounds`, `individuals_backgrounds`]) {
     for (const ext of BG_EXTENSIONS) {
@@ -1969,6 +1993,44 @@ function stageCover(file) {
   renderCoverPreview();
 }
 
+// Stage a flower preset in place of an uploaded portrait. Shares stagedCover
+// with the file path so the required-cover check, the "replace the old cover"
+// queueing and the preview all work unchanged; only the save step differs.
+// (revokeObjectURL on the preset's https URL elsewhere is a harmless no-op.)
+function stageCoverPreset(key) {
+  const preset = COVER_PRESETS.find((p) => p.key === key);
+  if (!preset) return;
+  if (stagedCover) URL.revokeObjectURL(stagedCover.previewUrl);
+  stagedCover = { preset: preset.key, previewUrl: preset.url };
+  renderCoverPreview();
+}
+
+function renderCoverPicker() {
+  const wrap = document.getElementById("coverPicker");
+  if (!wrap) return;
+  // Highlight the preset in effect: a freshly staged one, or the saved one
+  // when nothing new is staged. An uploaded photo (staged or saved) means none.
+  const active = stagedCover ? (stagedCover.preset || null) : (existingCover?.preset || null);
+  wrap.innerHTML = COVER_PRESETS.map((p) => {
+    const label = t(`cover.preset.${p.key}`);
+    return `
+    <button type="button" class="bg-picker-item cover-picker-item${active === p.key ? " selected" : ""}"
+      data-key="${p.key}" style="background-image:url('${p.url}')" aria-label="${esc(label)}" title="${esc(label)}"></button>`;
+  }).join("");
+  wrap.querySelectorAll(".cover-picker-item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      // Clicking the staged preset again un-stages it; a saved one is removed
+      // with the ✕ next to its preview, like any other saved cover.
+      if (stagedCover?.preset === btn.dataset.key) {
+        stagedCover = null;
+        renderCoverPreview();
+        return;
+      }
+      stageCoverPreset(btn.dataset.key);
+    });
+  });
+}
+
 function stageFiles(fileList) {
   for (const file of fileList) {
     stagedFiles.push({ file, type: classifyFile(file), previewUrl: URL.createObjectURL(file) });
@@ -2008,6 +2070,7 @@ function renderCoverPreview() {
     });
     wrap.append(img, remove);
   }
+  renderCoverPicker();
 }
 
 function renderPreviews() {
@@ -2255,7 +2318,8 @@ export function initAdminPortal() {
   document.getElementById("plotRow")?.addEventListener("input", updatePlotPreview);
   updatePlotPreview();
 
-  // Cover photo dropzone
+  // Cover photo dropzone (+ the flower presets beneath it)
+  renderCoverPicker();
   const dropzoneCover = document.getElementById("dropzoneCover");
   const fileInputCover = document.getElementById("fileInputCover");
   if (dropzoneCover && fileInputCover) {

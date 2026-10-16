@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="css/style.css?v=10" />
-    <link rel="stylesheet" href="css/admin.css?v=25" />
+    <link rel="stylesheet" href="css/admin.css?v=26" />
   </head>
   <body>
     <div class="app-shell">
@@ -272,6 +272,9 @@
                           <input id="fileInputCover" type="file" accept="image/*" />
                         </div>
                         <div class="cover-preview" id="coverPreview"></div>
+                        <!-- No portrait? A flower image stands in for it -->
+                        <p class="field-hint cover-preset-hint" data-i18n="hint.coverPreset">No portrait photo? Choose a flower image to show in its place.</p>
+                        <div class="bg-picker cover-picker" id="coverPicker"></div>
                       </div>
 
                       <!-- Gallery -->
@@ -431,7 +434,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=74";
+      import { initAdminPortal } from "./js/admin.js?v=75";
       initAdminPortal();
     </script>
   </body>

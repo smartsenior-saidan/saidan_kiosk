@@ -1090,6 +1090,16 @@ tr[data-key]:hover .drill-chevron {
   padding: 6px;
 }
 
+/* Flower stand-ins for a missing portrait: same picker, square thumbs, kept
+   small under the cover dropzone. */
+.cover-preset-hint { margin-top: 12px; }
+.cover-picker {
+  margin-top: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  max-width: 240px;
+}
+.cover-picker-item { aspect-ratio: 1 / 1; }
+
 /* ---- Media layout (background / cover / gallery) ----------------------------------- */
 
 .media-columns {
