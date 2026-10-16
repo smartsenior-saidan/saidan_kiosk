@@ -1964,12 +1964,15 @@ body.has-tenant-bg .f-member-years {
 
 /* ── Family selector page ── */
 
+/* Block, not flex: the body was a flex row that centred .f-stage, which meant
+   any extra in-flow child of <body> (a browser-extension overlay, a future
+   widget) became a flex item, took its width from the row, and shoved the
+   stage off-centre. The stage now centres itself (margin auto +
+   its own min-height), so stray siblings can't move it. */
 .family-page {
   background: #faf9f6;
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   overflow-y: auto;
   position: relative;
 }
@@ -1989,11 +1992,15 @@ body.has-tenant-bg .f-member-years {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: clamp(20px, 3vw, 40px);
   padding: 40px 20px;
   text-align: center;
+  box-sizing: border-box;
   width: 100%;
   max-width: 1080px;
+  min-height: 100vh;
+  margin: 0 auto;
 }
 
 .f-family-name {
@@ -2065,15 +2072,9 @@ body.has-tenant-bg .f-member-years {
   }
 
   /* A large family runs past the bottom of the screen, so the page has to
-     scroll. Two things were stopping it:
-
-     1. `.family-page { overflow-y: auto }` above is dead — it's (0,1,0) and
-        loses to `html.kiosk body { overflow: hidden }` at (0,1,2). Matching
-        that specificity is the only way to release the lock.
-     2. `align-items: center` on the same element centers the stage, which
-        pushes the overflow out BOTH ends — and a flex container cannot scroll
-        to content overflowing its start edge. Anchoring to flex-start keeps
-        the whole list reachable. */
+     scroll. `.family-page { overflow-y: auto }` above is dead — it's (0,1,0)
+     and loses to `html.kiosk body { overflow: hidden }` at (0,1,2). Matching
+     that specificity is the only way to release the lock. */
   html.kiosk body.family-page {
     display: block;
     overflow-y: auto;
@@ -2081,7 +2082,12 @@ body.has-tenant-bg .f-member-years {
     -webkit-overflow-scrolling: touch;
   }
 
+  /* Top-anchored on a phone: the fixed back/end buttons own the top band, and
+     vertically centring a short list would float it mid-screen. Dropping the
+     min-height also keeps a long list scrollable from its first row. */
   .f-stage {
+    min-height: 0;
+    justify-content: flex-start;
     padding: clamp(84px, 20vw, 104px) 18px 40px;
     gap: 18px;
   }
