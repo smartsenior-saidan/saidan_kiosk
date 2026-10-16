@@ -32,8 +32,8 @@ import {
   personMediaDoc,
   DISPLAY_NAME,
 } from "./firebase.js?v=13";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=46";
-import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=2";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=47";
+import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=3";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -137,6 +137,12 @@ let sortDir   = "asc";       // asc | desc
 let selectedFamilyId = null;
 let initialFamilyId  = null;
 let familyBuilder = [];     // "New Family" tab: { id, first_name, last_name, kaimyo }
+
+// Hard cap on members per family. The kiosk family page lays members out in at
+// most two rows and narrows the cards to fit, so past 8 the names wrap and
+// split mid-name. Enforced at every place a person can join a family here, and
+// again by firestore.rules on families.member_ids so two admins can't race past it.
+const MAX_FAMILY_MEMBERS = 8;
 
 // ── Display helpers ──────────────────────────────────────────────────────────
 
@@ -663,6 +669,9 @@ function renderFamilySection() {
     // Adding a member always works, even for a "legacy" family with no
     // Firestore record yet (grouped purely by matching related_persons +
     // surname) — addMemberToFamily promotes it to a named record on first add.
+    // A full family keeps the box visible but disabled, so the cap is explained
+    // rather than the search silently finding nothing.
+    const full = open.members.length >= MAX_FAMILY_MEMBERS;
     el.innerHTML = `
       <div class="drill-header">
         <button type="button" class="btn-secondary" id="familyBackBtn">${t("fi.backToFamilies")}</button>
@@ -670,9 +679,9 @@ function renderFamilySection() {
         <span class="entity-id">${esc(entityIds.family.get(open.key) || "")}</span>
       </div>
       <div class="family-picker family-add-picker">
-        <p class="field-hint">${esc(t("fi.addMemberLabel"))}</p>
+        <p class="field-hint">${esc(full ? t("fi.familyFull", { max: MAX_FAMILY_MEMBERS }) : t("fi.addMemberLabel"))}</p>
         <div class="family-search-row">
-          <input id="famAddSearch" type="search" placeholder="${esc(t("fi.addMemberPh"))}" autocomplete="off" />
+          <input id="famAddSearch" type="search" placeholder="${esc(t("fi.addMemberPh"))}" autocomplete="off" ${full ? "disabled" : ""} />
         </div>
         <ul class="family-suggestions hidden" id="famAddSuggestions"></ul>
       </div>
@@ -866,6 +875,10 @@ async function addMemberToFamily(key, personId) {
   const fam = buildFamilies().find((f) => f.key === key);
   const person = allProfiles.find((p) => p.id === personId);
   if (!fam || !person) return;
+  if (fam.members.length >= MAX_FAMILY_MEMBERS) {
+    setStatus(t("status.familyFull", { name: fam.name, max: MAX_FAMILY_MEMBERS }), "error");
+    return;
+  }
 
   setStatus(t("status.saving"), "info");
   try {
@@ -1189,6 +1202,12 @@ async function syncFamilyMembership(personId, fromId, toId) {
 
   if (toId) {
     const peers = familyPeerIds(toId, personId);
+    // The form's picker already refuses a full family; this catches a family
+    // that filled up (another admin, another tab) after the picker was shown.
+    if (peers.length >= MAX_FAMILY_MEMBERS) {
+      const fam = familyRecords.find((f) => f.id === toId);
+      throw new Error(t("status.familyFull", { name: fam?.name || "—", max: MAX_FAMILY_MEMBERS }));
+    }
     await updateDoc(familyDoc(toId), {
       member_ids: arrayUnion(personId),
       updated_at: serverTimestamp(),
@@ -1245,8 +1264,17 @@ function initFamilyPicker() {
   let activeIndex = -1; // keyboard-highlighted suggestion
 
   // One family per person: picking replaces whatever was selected before.
+  // A family that already holds the maximum (not counting the person being
+  // edited, who may already be in it) cannot be picked.
   function pick(id) {
-    if (familyRecords.some((f) => f.id === id)) {
+    const fam = familyRecords.find((f) => f.id === id);
+    if (fam) {
+      if (familyPeerIds(id, editingPersonId).length >= MAX_FAMILY_MEMBERS) {
+        setFormStatus(t("status.familyFull", { name: fam.name || "—", max: MAX_FAMILY_MEMBERS }), "error");
+        suggestions.classList.add("hidden");
+        activeIndex = -1;
+        return;
+      }
       selectedFamilyId = id;
       renderFamilySelected();
     }
@@ -1282,11 +1310,12 @@ function initFamilyPicker() {
         .filter(Boolean)
         .slice(0, 3)
         .join("、");
+      const full = n >= MAX_FAMILY_MEMBERS ? ` <span class="suggestion-fam">${esc(t("fam.full"))}</span>` : "";
       return `
       <li class="family-suggestion-item" data-id="${f.id}">
         <span class="suggestion-avatar">家</span>
         <span class="suggestion-body">
-          <span class="suggestion-name">${esc(f.name || "—")} <span class="suggestion-year">${esc(t("fam.memberCount", { n }))}</span></span>
+          <span class="suggestion-name">${esc(f.name || "—")} <span class="suggestion-year">${esc(t("fam.memberCount", { n }))}</span>${full}</span>
           ${names ? `<span class="suggestion-kaimyo">${esc(names)}${n > 3 ? " …" : ""}</span>` : ""}
         </span>
       </li>`;
@@ -1361,11 +1390,29 @@ function renderFamilyBuilder() {
   // A family only needs a name — members are optional (an empty family is fine).
   const name = (document.getElementById("nfName")?.value || "").trim();
   if (saveBtn) saveBtn.disabled = !name;
+  // Once the builder holds the maximum, close the search so the cap is visible
+  // at a glance instead of every pick being refused one by one.
+  const search = document.getElementById("nfSearch");
+  if (search) {
+    const full = familyBuilder.length >= MAX_FAMILY_MEMBERS;
+    search.disabled = full;
+    search.placeholder = full ? t("fi.familyFull", { max: MAX_FAMILY_MEMBERS }) : t("nf.searchPh");
+  }
 }
 
 function addToFamilyBuilder(id) {
   const p = allProfiles.find((x) => x.id === id);
   if (!p) return;
+  // Count what this pick would add — the person plus any relatives pulled in
+  // below — and refuse the whole pick if it would push the family past the cap.
+  // Partially adding a family would split a group that is meant to stay whole.
+  const inBuilder = new Set(familyBuilder.map((r) => r.id));
+  const incoming = [p.id, ...(p.related_persons || [])]
+    .filter((rid) => !inBuilder.has(rid) && allProfiles.some((x) => x.id === rid));
+  if (familyBuilder.length + new Set(incoming).size > MAX_FAMILY_MEMBERS) {
+    setStatus(t("nf.limit", { name: personName(p) || "—", max: MAX_FAMILY_MEMBERS }), "error");
+    return;
+  }
   const push = (person) => {
     if (person && !familyBuilder.find((r) => r.id === person.id)) {
       familyBuilder.push({
@@ -1462,6 +1509,10 @@ async function saveFamilyBuilder() {
 
   const saveBtn = document.getElementById("nfSaveBtn");
   const ids = familyBuilder.map((p) => p.id);
+  if (ids.length > MAX_FAMILY_MEMBERS) {
+    setStatus(t("fi.familyFull", { max: MAX_FAMILY_MEMBERS }), "error");
+    return;
+  }
   if (saveBtn) saveBtn.disabled = true;
   setStatus(t("nf.saving"), "info");
 
@@ -1558,7 +1609,13 @@ async function handleSave(e) {
 
     try {
       await syncFamilyMembership(personId, initialFamilyId, selectedFamilyId);
-    } catch (e) { console.warn("[admin] family membership sync failed:", e); }
+    } catch (e) {
+      // The profile itself is saved; only the family link failed (typically the
+      // family filled up after the picker was shown). Surface it in the final
+      // status instead of reporting a clean save.
+      console.warn("[admin] family membership sync failed:", e);
+      missing.push(e.message || String(e));
+    }
 
     // If a new cover is staged while an old one exists, queue the old one for deletion
     if (stagedCover && existingCover && !removedMediaIds.includes(existingCover.id)) {

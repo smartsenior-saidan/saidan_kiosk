@@ -138,9 +138,21 @@ service cloud.firestore {
         }
       }
 
+      // A family holds at most 8 members: the kiosk family page fits two rows
+      // and narrows the cards past that until names split mid-word. The admin
+      // panel refuses the 9th member before it gets here; this is the backstop
+      // for two admins adding at once, or a stale tab. Delete stays separate
+      // because request.resource does not exist on a delete.
+      function withinFamilyLimit() {
+        return !('member_ids' in request.resource.data)
+          || request.resource.data.member_ids.size() <= 8;
+      }
+
       match /families/{familyId} {
-        allow read:  if true;                    // public kiosk
-        allow write: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
+        allow read:   if true;                   // public kiosk
+        allow create, update: if (ownsTenant(tenantId) || legacyOwnsTenant(tenantId))
+                              && withinFamilyLimit();
+        allow delete: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
       }
     }
 
