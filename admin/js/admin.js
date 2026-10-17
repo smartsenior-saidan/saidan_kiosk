@@ -34,9 +34,9 @@ import {
   personMediaDoc,
   DISPLAY_NAME,
 } from "./firebase.js?v=15";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=55";
-import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=11";
-import { initUsagePanel, openUsagePanel } from "./usage.js?v=4";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=56";
+import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=12";
+import { initUsagePanel, openUsagePanel } from "./usage.js?v=5";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -1350,6 +1350,40 @@ function showQrModal(person) {
 
 // ── Profile form ─────────────────────────────────────────────────────────────
 
+// ── Sample memorial messages (§3) ───────────────────────────────────────────
+// Three general examples (gratitude / memories / prayer) the office can drop
+// into the message box and edit — deliberately generic so they fit anyone.
+// Rendered from i18n so they follow the language switch; a click fills an
+// empty box, and asks before replacing text that is already there.
+const BIO_SAMPLE_KEYS = ["bio.sample1", "bio.sample2", "bio.sample3"];
+
+function renderBioSamples() {
+  const wrap = document.getElementById("bioSamples");
+  if (!wrap) return;
+  wrap.innerHTML = BIO_SAMPLE_KEYS.map((k) =>
+    `<button type="button" class="sample-msg" data-key="${k}">${esc(t(k))}</button>`
+  ).join("");
+  wrap.querySelectorAll(".sample-msg").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const box = document.getElementById("biography");
+      if (!box) return;
+      const text = t(btn.dataset.key);
+      if (box.value.trim() && box.value.trim() !== text) {
+        const ok = await confirmDialog({
+          title: t("bio.replaceTitle"),
+          body: t("bio.replaceBody"),
+          confirmLabel: t("bio.replaceConfirm"),
+          danger: false,
+        });
+        if (!ok) return;
+      }
+      box.value = text.slice(0, box.maxLength > 0 ? box.maxLength : text.length);
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+      box.focus();
+    });
+  });
+}
+
 // ── Family contact (施主・ご遺族の連絡先) ────────────────────────────────────
 // Lives in individuals/{id}/private/contact, NOT on the person document: the
 // person is publicly readable for the kiosk, and a relative's address, phone
@@ -2453,6 +2487,7 @@ function syncLangButtons() {
 
 /** Re-translate everything that JS rendered when the language changes. */
 function retranslateDynamic() {
+  renderBioSamples();
   syncLangButtons();
   setText("pageTitle", currentPageTitle());
   setText("pageSubtitle", currentSection === "dashboard" ? t(`sub.${activeSearchTab}`) : t(`sub.${currentSection}`));
@@ -2513,6 +2548,7 @@ export function initAdminPortal() {
   if (ROLE === "super") document.getElementById("navStaff")?.classList.remove("hidden");
   initStaffPanel({ esc, setStatus, confirmDialog });
   initUsagePanel({ esc, setStatus, kioskUrl });
+  renderBioSamples();
 
   // Sign out button
   document.getElementById("signOutBtn")?.addEventListener("click", async () => {

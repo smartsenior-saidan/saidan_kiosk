@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="css/style.css?v=10" />
-    <link rel="stylesheet" href="css/admin.css?v=32" />
+    <link rel="stylesheet" href="css/admin.css?v=33" />
   </head>
   <body>
     <div class="app-shell">
@@ -236,6 +236,9 @@
                     <div class="field">
                       <label for="biography" data-i18n="form.biography">Biography</label>
                       <textarea id="biography" maxlength="100" placeholder="Share their life story, memories, and legacy…" data-i18n-ph="ph.biography"></textarea>
+                      <!-- Sample messages: click one to drop it into the box (admin.js renderBioSamples) -->
+                      <p class="field-hint" data-i18n="hint.bioSamples">Sample messages — click one to use it as a starting point:</p>
+                      <div class="sample-msgs" id="bioSamples"></div>
                     </div>
                   </div>
 
@@ -641,7 +644,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=83";
+      import { initAdminPortal } from "./js/admin.js?v=84";
       initAdminPortal();
     </script>
   </body>

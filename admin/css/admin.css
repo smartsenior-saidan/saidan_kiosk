@@ -1778,6 +1778,39 @@ tr[data-key]:hover .drill-chevron {
   accent-color: var(--color-accent);
 }
 
+/* ---- Sample memorial messages (profile form §3) ----------------------------- */
+
+.sample-msgs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.sample-msg {
+  text-align: left;
+  white-space: normal;
+  line-height: 1.5;
+  font-size: 0.82rem;
+  font-weight: 400;
+  padding: 8px 12px;
+  min-height: unset;
+  min-width: unset;
+  border: 1px dashed var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-inset);
+  background-image: none;
+  color: var(--color-text);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.sample-msg:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  box-shadow: none;
+}
+
 /* ---- Family contact (profile form §5) --------------------------------------- */
 
 .contact-hint { margin: -6px 0 12px; }
