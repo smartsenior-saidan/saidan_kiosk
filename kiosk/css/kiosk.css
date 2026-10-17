@@ -93,8 +93,10 @@ html.theme-pending body {
   gap: clamp(10px, 1.8vh, 20px);
 }
 
+/* Sizes track the thank-you screen (kiosk/thankyou.html) so the first and
+   last things a visitor sees read at the same scale. */
 .home-greeting-main {
-  font-size: clamp(1.7rem, 4.2vw, 2.8rem);
+  font-size: clamp(2.2rem, 5.4vw, 3.4rem);
   font-weight: 700;
   color: var(--color-text);
   line-height: 1.4;
@@ -103,7 +105,7 @@ html.theme-pending body {
 }
 
 .home-greeting-sub {
-  font-size: clamp(1.3rem, 2.4vw, 2rem);
+  font-size: clamp(1.5rem, 3vw, 2.3rem);
   color: var(--color-text-muted);
   line-height: 1.6;
   max-width: 56ch;
@@ -112,10 +114,10 @@ html.theme-pending body {
 
 /* Start button */
 .home-start-btn {
-  width: min(460px, 85%);
+  width: min(500px, 85%);
   min-width: unset;
-  height: clamp(78px, 10vh, 104px);
-  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  height: clamp(84px, 10vh, 110px);
+  font-size: clamp(1.6rem, 3.2vw, 2.3rem);
   font-weight: 700;
   border-radius: 22px;
   letter-spacing: 0.5px;
@@ -124,7 +126,7 @@ html.theme-pending body {
 }
 
 .home-start-hint {
-  font-size: clamp(1.1rem, 1.6vw, 1.3rem);
+  font-size: clamp(1.3rem, 2.2vw, 1.7rem);
   color: var(--color-text-muted);
   max-width: 52ch;
   margin: 0;
@@ -185,7 +187,7 @@ html.theme-pending body {
   text-align: center;
   white-space: pre-line;
   line-height: 1.5;
-  font-size: clamp(1.3rem, 2.8vw, 2rem);
+  font-size: clamp(1.5rem, 3vw, 2.3rem);
   font-weight: 700;
   color: var(--color-text);
   padding: 0 clamp(24px, 4vw, 48px);
@@ -1544,27 +1546,39 @@ body.has-tenant-bg .f-member-years {
   -webkit-backdrop-filter: blur(6px);
 }
 
+/* A warm paper sheet tinted with the site's accent colour, rather than a
+   flat white box: a soft gradient, a hairline edge and a coloured top rule.
+   The plain background comes first for browsers without color-mix(). */
 .m-bio-card {
-  max-width: 720px;
+  max-width: 760px;
   max-height: 80%;
   overflow-y: auto;
-  background: #fff;
+  background: #fbf6ee;
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--color-accent) 6%, #fffdf8) 0%,
+    color-mix(in srgb, var(--color-accent) 16%, #faf4ea) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, #fff);
+  border-top: 6px solid var(--color-accent);
   border-radius: 20px;
-  padding: 44px 48px 36px;
+  padding: 40px 52px 36px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
 }
 
 .m-bio-title {
   font-family: var(--font-primary);
-  font-size: 1.5rem;
-  color: var(--color-text);
-  margin: 0 0 18px;
-  letter-spacing: 0.08em;
+  font-size: 1.7rem;
+  color: var(--color-accent);
+  margin: 0 0 20px;
+  padding-bottom: 12px;
+  letter-spacing: 0.12em;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
 .m-bio-text {
   font-family: var(--font-primary);
-  font-size: 1.2rem;
+  font-size: 1.45rem;
   line-height: 2;
   color: var(--color-text);
   white-space: pre-wrap;
@@ -1574,8 +1588,8 @@ body.has-tenant-bg .f-member-years {
 .m-bio-close {
   display: block;
   margin: 0 auto;
-  padding: 14px 40px;
-  font-size: 1.1rem;
+  padding: 16px 48px;
+  font-size: 1.25rem;
   font-weight: 600;
   color: #fff;
   background: var(--color-accent);
