@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" />
-    <link rel="stylesheet" href="css/kiosk.css?v=102" />
+    <link rel="stylesheet" href="css/kiosk.css?v=103" />
     <script src="js/config.js?v=2"></script>
     <style>
       .ty-page {
@@ -31,8 +31,10 @@
         padding: clamp(32px, 6vw, 80px);
       }
 
+      /* Sized a step above the welcome screen's greeting so the farewell
+         reads from a distance, in either orientation. */
       .ty-main {
-        font-size: clamp(1.7rem, 4.2vw, 2.8rem);
+        font-size: clamp(2.2rem, 5.4vw, 3.4rem);
         font-weight: 700;
         color: #1a1816;
         letter-spacing: 0.12em;
@@ -41,7 +43,7 @@
       }
 
       .ty-sub {
-        font-size: clamp(1.3rem, 2.4vw, 2rem);
+        font-size: clamp(1.5rem, 3vw, 2.3rem);
         color: #555;
         letter-spacing: 0.06em;
         line-height: 1.6;
@@ -58,14 +60,14 @@
       }
 
       .ty-countdown-ring {
-        width: 100px;
-        height: 100px;
+        width: 124px;
+        height: 124px;
         position: relative;
       }
 
       .ty-ring-svg {
-        width: 100px;
-        height: 100px;
+        width: 124px;
+        height: 124px;
         transform: rotate(-90deg);
       }
 
@@ -91,23 +93,23 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 2rem;
+        font-size: 2.5rem;
         font-weight: 700;
         color: var(--color-accent);
       }
 
       .ty-countdown-label {
-        font-size: clamp(1.3rem, 2.2vw, 1.7rem);
+        font-size: clamp(1.5rem, 2.8vw, 2rem);
         color: #666;
         letter-spacing: 0.04em;
       }
 
       /* Skip the wait: the next visitor (or staff) can go home at once */
       .ty-home-btn {
-        height: 64px;
-        padding: 0 48px;
+        height: 76px;
+        padding: 0 56px;
         font-family: inherit;
-        font-size: clamp(1.15rem, 2vw, 1.4rem);
+        font-size: clamp(1.4rem, 2.4vw, 1.7rem);
         font-weight: 600;
         letter-spacing: 0.06em;
         color: #fff;
