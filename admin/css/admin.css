@@ -1029,6 +1029,7 @@ tr[data-key]:hover .drill-chevron {
 .form-section[data-step="3"] { --step-color: #7D5BA6; --step-soft: rgba(125, 91, 166, 0.22); }
 .form-section[data-step="4"] { --step-color: #A55940; --step-soft: rgba(165, 89, 64, 0.22); }
 .form-section[data-step="5"] { --step-color: #4F7A35; --step-soft: rgba(79, 122, 53, 0.22); }
+.form-section[data-step="6"] { --step-color: #8A6D1F; --step-soft: rgba(138, 109, 31, 0.22); }
 
 .form-section[data-step] { border-top-color: var(--step-soft, var(--color-border-soft)); }
 
