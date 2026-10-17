@@ -2149,3 +2149,117 @@ body.has-tenant-bg .f-member-years {
 .m-lightbox-close:hover {
   background: rgba(255, 255, 255, 0.25);
 }
+
+/* ============================================================
+   PORTRAIT KIOSK  —  a tablet or monitor stood on end
+   (Surface Pro 7+ rotated: 912 × 1368 CSS px). Phones (≤ 700px) keep
+   their own composition above; this covers everything wider that is
+   taller than it is wide. Picked up automatically from the screen's
+   orientation — no site setting needed, and a landscape kiosk at the
+   same site is untouched.
+   ============================================================ */
+@media (orientation: portrait) and (min-width: 701px) {
+
+  /* ── Profile: photo on top, vertical text beneath ──
+     The three-column stage (dates | photo | name) turns into two rows.
+     Row 1 is the photo; row 2 keeps the kiosk's vertical Japanese with
+     the name/kaimyo on the right and the dates on the left, exactly as
+     they stand beside the photo in landscape. */
+  html.kiosk body.profile-page {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .m-stage {
+    position: relative;
+    inset: auto;
+    min-height: 100%;
+    flex-direction: row-reverse;   /* name column ends up on the right */
+    flex-wrap: wrap;
+    align-items: flex-start;
+    align-content: center;
+    justify-content: center;
+    column-gap: clamp(32px, 7vw, 72px);
+    row-gap: clamp(20px, 3vh, 44px);
+    /* Clear the back/end buttons above and the pinned action bar below. */
+    padding: clamp(96px, 9vh, 130px) clamp(32px, 5vw, 60px) clamp(130px, 12vh, 170px);
+  }
+
+  /* Flex lines are cut in order, so the photo must come first or the name
+     column (first in the DOM) takes the top line by itself. */
+  .m-center     { order: 1; }
+  .m-side-right { order: 2; }
+  .m-side-left  { order: 3; }
+
+  .m-center {
+    flex: 0 0 100%;
+    align-items: center;
+  }
+
+  .m-photo {
+    width: clamp(260px, min(58vw, 36vh), 560px);
+    aspect-ratio: 1 / 1;
+  }
+
+  .m-side {
+    flex: 0 0 auto;
+    align-self: flex-start;
+    padding: 0;
+  }
+
+  /* Top edges line up across both text groups. */
+  .m-name-group,
+  .m-info-group {
+    align-items: flex-start;
+  }
+  .lang-ja .m-info-group > #pAgeBlock { align-self: flex-start; }
+
+  /* The beside-the-photo spacer is meaningless here; the row gap does it. */
+  .m-kaimyo.hidden + .m-name { margin-left: 0; }
+
+  /* Sized so the longest realistic column (a 13-character era date) fits
+     under the photo on a 1368px-tall screen; taller screens get the same
+     size, shorter ones scroll. */
+  .m-name {
+    font-size: clamp(2rem, 3.6vh, 2.8rem);
+    letter-spacing: 0.4em;
+  }
+  .m-kaimyo,
+  .m-info-value {
+    font-size: clamp(1.4rem, 2.55vh, 2.1rem);
+    letter-spacing: 0.28em;
+  }
+  .m-info-label {
+    font-size: clamp(1.05rem, 1.7vh, 1.45rem);
+  }
+
+  /* Action bar stays pinned to the bottom of the (now scrollable) stage. */
+  .m-bottom {
+    bottom: clamp(24px, 3vh, 40px);
+  }
+
+  /* ── Family: two columns, however many members ──
+     family.html sets the column count inline from the member count (up to
+     4 across) — far too narrow at this width, hence !important. */
+  .f-members {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: clamp(16px, 2.5vw, 28px);
+  }
+  .f-member-btn:only-child {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: 60%;
+  }
+  .f-member-btn {
+    padding: clamp(24px, 3.5vh, 40px) clamp(16px, 3vw, 32px);
+  }
+  .f-member-name {
+    font-size: clamp(1.5rem, 3.6vw, 2.2rem);
+  }
+  .f-member-years {
+    font-size: clamp(0.95rem, 1.7vw, 1.2rem);
+  }
+  .f-stage {
+    padding: clamp(110px, 10vh, 150px) clamp(32px, 5vw, 60px) 48px;
+  }
+}
