@@ -702,16 +702,33 @@ function renderFamilySection() {
   }
 
   // Level 1 — the list of families. Each row drills into its members.
-  if (!families.length) {
-    el.innerHTML = `<p class="empty-state">${t("empty.noProfiles")}</p>`;
-    return;
-  }
-
-  el.innerHTML = familyListTableHtml(families);
-  wireFamilyList(el, families, (key) => {
+  renderFamilyList(el, families, (key) => {
     selectedFamilyKey = key;
     renderFamilySection();
   });
+}
+
+/** The families list with the same paging as the persons table (rows per
+ *  page shared, page position per container). Used by the Family tab's top
+ *  level and the family half of the global search results. */
+function renderFamilyList(container, families, onDrill) {
+  if (!container) return;
+  if (!families.length) {
+    container.innerHTML = `<p class="empty-state">${t("empty.noProfiles")}</p>`;
+    return;
+  }
+
+  const state = pageStateFor(container, "fam:" + families.map((f) => f.key).join("\u0000"));
+  const total = families.length;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  state.page = Math.min(Math.max(0, state.page), pages - 1);
+  const start = state.page * pageSize;
+  const slice = families.slice(start, start + pageSize);
+  const pager = pagerHtml(start + 1, start + slice.length, total, state.page, pages);
+
+  container.innerHTML = `${pager}${familyListTableHtml(slice)}${pages > 1 ? pager : ""}`;
+  wireFamilyList(container, slice, onDrill);
+  wirePager(container, state, () => renderFamilyList(container, families, onDrill));
 }
 
 /** The families table — level 1 of the Family tab, and the family half of the
@@ -829,9 +846,7 @@ function renderGlobalSearch() {
     </div>`;
 
   if (families.length) {
-    const el = document.getElementById("gsFamilyList");
-    el.innerHTML = familyListTableHtml(families);
-    wireFamilyList(el, families, (key) => {
+    renderFamilyList(document.getElementById("gsFamilyList"), families, (key) => {
       // Drill into the family on its own tab; clear the box so the tabs return.
       input.value = "";
       renderGlobalSearch();
@@ -1070,6 +1085,33 @@ function pagerHtml(from, to, total, page, pages) {
     </div>`;
 }
 
+/** Page position for `container` over the row set identified by `key`: kept
+ *  across sort/page clicks on the same rows, reset when the rows change. */
+function pageStateFor(container, key) {
+  let state = pageState.get(container);
+  if (!state || state.key !== key) { state = { key, page: 0 }; pageState.set(container, state); }
+  return state;
+}
+
+/** Wire the pager controls (top and, on multi-page lists, bottom too) that
+ *  pagerHtml() rendered into `container`; `rerender` redraws the same list. */
+function wirePager(container, state, rerender) {
+  container.querySelectorAll("[data-page-size]").forEach((sel) => {
+    sel.addEventListener("change", () => {
+      setPageSize(Number(sel.value));
+      state.page = 0;
+      rerender();
+    });
+  });
+  container.querySelectorAll("[data-page]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.page = Number(btn.dataset.page);
+      rerender();
+      container.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  });
+}
+
 /**
  * Render the full profiles table (avatar, name, year, section, row, actions)
  * into any container. Shared by the Individuals tab, the family drill-down and
@@ -1086,12 +1128,7 @@ function renderPersonsTable(container, persons, actionPool) {
     return;
   }
 
-  // Page position: kept across sort/page clicks on the same rows, reset when
-  // the rows change (new filter, another family, fresh data).
-  const key = persons.map((p) => p.id).join("\u0000");
-  let state = pageState.get(container);
-  if (!state || state.key !== key) { state = { key, page: 0 }; pageState.set(container, state); }
-
+  const state = pageStateFor(container, persons.map((p) => p.id).join("\u0000"));
   const sorted = sortProfiles(persons);
   const total = sorted.length;
   const pages = Math.max(1, Math.ceil(total / pageSize));
@@ -1138,22 +1175,7 @@ function renderPersonsTable(container, persons, actionPool) {
     });
   });
 
-  // Paging controls (top and, on multi-page lists, bottom too)
-  container.querySelectorAll("[data-page-size]").forEach((sel) => {
-    sel.addEventListener("change", () => {
-      setPageSize(Number(sel.value));
-      state.page = 0;
-      renderPersonsTable(container, persons, actionPool);
-    });
-  });
-  container.querySelectorAll("[data-page]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.page = Number(btn.dataset.page);
-      renderPersonsTable(container, persons, actionPool);
-      container.scrollIntoView({ block: "start", behavior: "smooth" });
-    });
-  });
-
+  wirePager(container, state, () => renderPersonsTable(container, persons, actionPool));
   wireProfileActions(container, actionPool);
 }
 
