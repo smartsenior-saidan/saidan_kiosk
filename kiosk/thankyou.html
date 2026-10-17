@@ -102,6 +102,26 @@
         letter-spacing: 0.04em;
       }
 
+      /* Skip the wait: the next visitor (or staff) can go home at once */
+      .ty-home-btn {
+        height: 64px;
+        padding: 0 48px;
+        font-family: inherit;
+        font-size: clamp(1.15rem, 2vw, 1.4rem);
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        color: #fff;
+        background: var(--color-accent);
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.15);
+        cursor: pointer;
+        animation: ty-fadein 0.8s ease 0.8s both;
+        transition: filter 0.12s ease, transform 0.1s ease;
+      }
+      .ty-home-btn:hover { filter: brightness(1.08); }
+      .ty-home-btn:active { transform: scale(0.97); }
+
       @keyframes ty-fadein {
         from { opacity: 0; transform: translateY(12px); }
         to   { opacity: 1; transform: translateY(0); }
@@ -144,6 +164,12 @@
           font-size: clamp(1rem, 4vw, 1.7rem);
           text-wrap: balance;
         }
+
+        .ty-home-btn {
+          height: 56px;
+          padding: 0 36px;
+          font-size: 1.1rem;
+        }
       }
     </style>
   </head>
@@ -162,6 +188,8 @@
         </div>
         <p class="ty-countdown-label" id="tyLabel">秒後にホームへ戻ります</p>
       </div>
+
+      <button type="button" class="ty-home-btn" id="tyHome">ホームへ戻る</button>
     </div>
 
     <script type="module">
@@ -181,23 +209,29 @@
       ringFill.style.strokeDashoffset = '0';
 
       let remaining = TOTAL;
+      let timer = null;
+
+      function goHome() {
+        if (timer) clearInterval(timer);
+        timer = null;
+        const tenantId = window.__ENV__?.TENANT_ID;
+        window.location.replace(tenantId ? `index.html?site=${tenantId}` : 'index.html');
+      }
 
       function tick() {
         remaining--;
         numEl.textContent = remaining;
         const progress = remaining / TOTAL;
         ringFill.style.strokeDashoffset = String(CIRCUM * (1 - progress));
-        if (remaining <= 0) {
-          const tenantId = window.__ENV__?.TENANT_ID;
-          window.location.href = tenantId
-            ? `index.html?site=${tenantId}`
-            : 'index.html';
-        }
+        if (remaining <= 0) goHome();
       }
+
+      // The button works from the first paint; no need to wait for the countdown.
+      document.getElementById('tyHome').addEventListener('click', goHome);
 
       // Apply tenant background then start countdown
       applyTenantBackground().then(() => {
-        setTimeout(() => { setInterval(tick, 1000); }, 800);
+        setTimeout(() => { timer = setInterval(tick, 1000); }, 800);
       });
     </script>
   </body>
