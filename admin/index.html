@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="css/style.css?v=10" />
-    <link rel="stylesheet" href="css/admin.css?v=27" />
+    <link rel="stylesheet" href="css/admin.css?v=28" />
   </head>
   <body>
     <div class="app-shell">
@@ -84,6 +84,13 @@
 
           <!-- ══ SEARCH — family groups first, individuals second ══ -->
           <section id="sec-dashboard" class="section">
+            <!-- Global search — every family and every person at this site in one box.
+                 While it has text the tabs below are hidden and results take their place. -->
+            <div class="card global-search">
+              <input id="globalSearchInput" type="search" placeholder="Search every family and person…" data-i18n-ph="ph.globalSearch" aria-label="Search all records" autocomplete="off" />
+            </div>
+            <div id="globalSearchResults" class="hidden"></div>
+
             <div class="search-tab-bar" id="searchTabBar">
               <button type="button" class="search-tab active" data-tab="family">
                 <span data-i18n="stats.families">Family groups</span>

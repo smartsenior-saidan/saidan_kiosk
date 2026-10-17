@@ -352,6 +352,27 @@
 }
 /* ---- Search tabs (Family groups / Individuals) --------------------------------- */
 
+/* Global search over every family and person — sits above the tab bar */
+.global-search {
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.global-search input[type="search"] {
+  width: 100%;
+  max-width: none;
+  min-height: 44px;
+  padding: 0 16px 0 42px;
+  font-size: 0.95rem;
+  background-color: var(--color-bg-inset);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23A6ABB2'><path fill-rule='evenodd' d='M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z' clip-rule='evenodd'/></svg>");
+  background-repeat: no-repeat;
+  background-position: 16px center;
+  background-size: 16px;
+  border-color: var(--color-border);
+}
+.global-results-group { margin-bottom: 16px; }
+.global-results-group .card-title { margin-bottom: 16px; }
+
 .search-tab-bar {
   display: inline-flex;
   background: var(--color-chip);

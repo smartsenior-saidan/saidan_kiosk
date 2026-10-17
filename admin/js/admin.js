@@ -466,6 +466,7 @@ async function loadFamilies() {
 function renderFamilyIndividualPanel() {
   renderFamilySection();
   renderIndividualSection();
+  renderGlobalSearch(); // keeps live results in step with the data
 }
 
 // The set of person ids that belong to a named family record.
@@ -706,6 +707,16 @@ function renderFamilySection() {
     return;
   }
 
+  el.innerHTML = familyListTableHtml(families);
+  wireFamilyList(el, families, (key) => {
+    selectedFamilyKey = key;
+    renderFamilySection();
+  });
+}
+
+/** The families table — level 1 of the Family tab, and the family half of the
+ *  global search results. One row per family, drilled into by clicking it. */
+function familyListTableHtml(families) {
   const rows = families
     .map((f) => `
       <tr data-key="${esc(f.key)}">
@@ -729,7 +740,7 @@ function renderFamilySection() {
       </tr>`)
     .join("");
 
-  el.innerHTML = `
+  return `
     <div class="profiles-table-wrap">
       <table class="profiles-table">
         <thead>
@@ -742,16 +753,16 @@ function renderFamilySection() {
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+}
 
+/** Wire a table from familyListTableHtml(): a row click drills in via
+ *  `onDrill(key)`; the URL / delete buttons act without drilling. */
+function wireFamilyList(el, families, onDrill) {
   el.querySelectorAll("tr[data-key]").forEach((tr) => {
     tr.style.cursor = "pointer";
-    tr.addEventListener("click", () => {
-      selectedFamilyKey = tr.dataset.key;
-      renderFamilySection();
-    });
+    tr.addEventListener("click", () => onDrill(tr.dataset.key));
   });
 
-  // Delete / URL buttons must not also drill into the family row.
   el.querySelectorAll("[data-fam-delete]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -769,6 +780,69 @@ function renderFamilySection() {
       showUrlModal(kioskUrl("family.html", f.members[0].id), f.name, t("url.familyTitle"));
     });
   });
+}
+
+// ── Global search — one box over every family and every person ───────────────
+// While the box has text, the Family / Individual tabs are hidden and both
+// kinds of match are listed in their place; clearing it brings back whichever
+// tab was showing. Families match on name, display id or any member; people
+// match the same way the per-tab filters do (name, kana, kaimyo, id, plot).
+function renderGlobalSearch() {
+  const input = document.getElementById("globalSearchInput");
+  const results = document.getElementById("globalSearchResults");
+  if (!input || !results) return;
+  const q = input.value.trim();
+  const active = q.length > 0;
+
+  document.getElementById("searchTabBar")?.classList.toggle("hidden", active);
+  results.classList.toggle("hidden", !active);
+  if (!active) {
+    results.innerHTML = "";
+    setActiveSearchTab(activeSearchTab); // restore whichever panel was showing
+    return;
+  }
+  document.getElementById("panel-family")?.classList.add("hidden");
+  document.getElementById("panel-individual")?.classList.add("hidden");
+
+  const lq = q.toLowerCase();
+  const families = buildFamilies().filter(
+    (f) =>
+      f.name.toLowerCase().includes(lq) ||
+      (entityIds.family.get(f.key) || "").toLowerCase().includes(lq) ||
+      f.members.some((p) => matchesProfileQuery(p, q))
+  );
+  const persons = dashboardPersons.filter((p) => matchesProfileQuery(p, q));
+
+  if (!families.length && !persons.length) {
+    results.innerHTML = `<div class="card"><p class="empty-state">${esc(t("gs.noResults"))}</p></div>`;
+    return;
+  }
+
+  results.innerHTML = `
+    <div class="card global-results-group${families.length ? "" : " hidden"}">
+      <h3 class="card-title">${esc(t("gs.familiesHeading", { n: families.length }))}</h3>
+      <div id="gsFamilyList"></div>
+    </div>
+    <div class="card global-results-group${persons.length ? "" : " hidden"}">
+      <h3 class="card-title">${esc(t("gs.individualsHeading", { n: persons.length }))}</h3>
+      <div id="gsPersonList"></div>
+    </div>`;
+
+  if (families.length) {
+    const el = document.getElementById("gsFamilyList");
+    el.innerHTML = familyListTableHtml(families);
+    wireFamilyList(el, families, (key) => {
+      // Drill into the family on its own tab; clear the box so the tabs return.
+      input.value = "";
+      renderGlobalSearch();
+      selectedFamilyKey = key;
+      setActiveSearchTab("family");
+      renderFamilySection();
+    });
+  }
+  if (persons.length) {
+    renderPersonsTable(document.getElementById("gsPersonList"), persons, dashboardPersons);
+  }
 }
 
 // Remove a family: delete the named record (if any) and dissolve the grouping
@@ -2358,7 +2432,8 @@ export function initAdminPortal() {
     showSection("new-profile");
   });
 
-  // Dashboard family/individual panel search
+  // Dashboard: global search over everything, plus each tab's own filter
+  document.getElementById("globalSearchInput")?.addEventListener("input", renderGlobalSearch);
   document.getElementById("familySearchInput")?.addEventListener("input", renderFamilyIndividualPanel);
   document.getElementById("individualSearchInput")?.addEventListener("input", renderFamilyIndividualPanel);
 
