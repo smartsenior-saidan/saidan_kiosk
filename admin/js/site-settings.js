@@ -25,7 +25,7 @@ import {
   tenantDoc,
   TENANT_ID,
 } from "./firebase.js?v=16";
-import { t } from "./i18n.js?v=59";
+import { t } from "./i18n.js?v=60";
 
 let esc = (s) => String(s ?? "");
 let setStatus = () => {};
@@ -36,6 +36,21 @@ const EXTS = ["jpg", "jpeg", "png", "webp"];   // same order as the kiosk
 const MIME_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 const PRESET_COUNT = 5;
 const STRING_KEYS = ["greetingMain", "greetingSub", "startBtn", "startHint", "icNote"];
+// Google Fonts families with Japanese glyphs, offered in the font dropdown.
+// The empty value is the kiosk's own default (Shippori Mincho in kiosk.css).
+// [family, style] — the style word is translated for the label.
+const FONT_OPTIONS = [
+  ["Noto Serif JP", "mincho"],
+  ["Noto Sans JP", "gothic"],
+  ["Zen Old Mincho", "mincho"],
+  ["Zen Kaku Gothic New", "gothic"],
+  ["BIZ UDPMincho", "mincho"],
+  ["BIZ UDPGothic", "gothic"],
+  ["Sawarabi Mincho", "mincho"],
+  ["Kosugi Maru", "rounded"],
+  ["Klee One", "hand"],
+  ["Kaisei Tokumin", "mincho"],
+];
 const FEATURE_KEYS = ["family", "slideshow"];
 const MAX_BYTES = 8 * 1024 * 1024;
 
@@ -215,6 +230,22 @@ async function renderPresetSlot(n) {
 
 const isHex = (v) => /^#[0-9a-f]{6}$/i.test(v || "");
 
+/** Fill the font dropdown; a saved family that isn't in the list is kept as
+ *  its own option so an older setting is never silently dropped. */
+function renderFontOptions(current) {
+  const sel = $("siteFont");
+  if (!sel) return;
+  const opts = [`<option value="">${esc(t("site.fontDefault"))}</option>`];
+  for (const [family, style] of FONT_OPTIONS) {
+    opts.push(`<option value="${esc(family)}">${esc(family)}（${esc(t(`site.fontStyle.${style}`))}）</option>`);
+  }
+  if (current && !FONT_OPTIONS.some(([f]) => f === current)) {
+    opts.push(`<option value="${esc(current)}">${esc(current)}</option>`);
+  }
+  sel.innerHTML = opts.join("");
+  sel.value = current || "";
+}
+
 async function loadTheme() {
   let cfg = {};
   try {
@@ -226,7 +257,7 @@ async function loadTheme() {
   const accent = isHex(cfg.accent_color) ? cfg.accent_color : "";
   if ($("siteAccent")) $("siteAccent").value = accent || "#3a7d44";
   if ($("siteAccentHex")) $("siteAccentHex").value = accent;
-  if ($("siteFont")) $("siteFont").value = cfg.font_family || "";
+  renderFontOptions((cfg.font_family || "").trim());
   const strings = cfg.strings || {};
   STRING_KEYS.forEach((k) => { const el = $(`siteStr_${k}`); if (el) el.value = strings[k] || ""; });
   const features = cfg.features || {};

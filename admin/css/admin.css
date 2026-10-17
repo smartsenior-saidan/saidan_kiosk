@@ -1992,36 +1992,15 @@ tr[data-key]:hover .drill-chevron {
 
 /* ---- Sample memorial messages (profile form §3) ----------------------------- */
 
-.sample-msgs {
+.sample-pick {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-top: 8px;
 }
-
-.sample-msg {
-  text-align: left;
-  white-space: normal;
-  line-height: 1.5;
-  font-size: 0.82rem;
-  font-weight: 400;
-  padding: 8px 12px;
-  min-height: unset;
-  min-width: unset;
-  border: 1px dashed var(--color-border);
-  border-radius: 10px;
-  background: var(--color-bg-inset);
-  background-image: none;
-  color: var(--color-text);
-  box-shadow: none;
-  cursor: pointer;
-}
-
-.sample-msg:hover {
-  border-color: var(--color-accent);
-  background: var(--color-accent-soft);
-  box-shadow: none;
-}
+.sample-pick select { max-width: 420px; min-height: 36px; font-size: 0.85rem; }
+.sample-pick .field-hint { margin: 0; }
 
 /* ---- Family contact (create-family page + open family) ---------------------- */
 

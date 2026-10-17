@@ -26,7 +26,7 @@ import {
   familiesCollection,
   TENANT_ID,
 } from "./firebase.js?v=16";
-import { t } from "./i18n.js?v=59";
+import { t } from "./i18n.js?v=60";
 
 // Helpers handed in by admin.js so this module shares its escaper, toast and
 // kiosk-link builder instead of growing its own.
