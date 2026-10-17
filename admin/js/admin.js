@@ -16,9 +16,9 @@ import {
   collection,
   personsCollection,
   personDoc,
-  personContactDoc,
   familiesCollection,
   familyDoc,
+  familyContactDoc,
   withTenant,
   serverTimestamp,
   arrayRemove,
@@ -33,10 +33,10 @@ import {
   personMediaCollection,
   personMediaDoc,
   DISPLAY_NAME,
-} from "./firebase.js?v=15";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=56";
-import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=12";
-import { initUsagePanel, openUsagePanel } from "./usage.js?v=5";
+} from "./firebase.js?v=16";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=57";
+import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=13";
+import { initUsagePanel, openUsagePanel } from "./usage.js?v=6";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -139,7 +139,6 @@ let sortDir   = "asc";       // asc | desc
 // membership actually changed and leave it alone when it didn't.
 let selectedFamilyId = null;
 let initialFamilyId  = null;
-let familyBuilder = [];     // "New Family" tab: { id, first_name, last_name, kaimyo }
 
 // Hard cap on members per family. The kiosk family page lays members out in at
 // most two rows and narrows the cards to fit, so past 8 the names wrap and
@@ -690,7 +689,13 @@ function renderFamilySection() {
         </div>
         <ul class="family-suggestions hidden" id="famAddSuggestions"></ul>
       </div>
-      <div id="familyMembersTable"></div>`;
+      <div id="familyMembersTable"></div>
+      <section class="card family-contact-card">
+        <h3 class="card-title">${esc(t("form.sectionContact"))}</h3>
+        <p class="field-hint">${esc(t("hint.contact"))}</p>
+        <div id="fcFields"></div>
+        <div class="form-actions"><button type="button" id="fcSaveBtn">${esc(t("contact.save"))}</button></div>
+      </section>`;
     const tableEl = document.getElementById("familyMembersTable");
     if (open.members.length) {
       renderPersonsTable(tableEl, open.members, dashboardPersons);
@@ -702,6 +707,7 @@ function renderFamilySection() {
       renderFamilySection();
     });
     wireFamilyAddPicker(open.key, open.members);
+    wireFamilyContact(open.key);
     return;
   }
 
@@ -881,6 +887,8 @@ async function deleteFamily(key) {
   setStatus(t("status.deleting"), "info");
   try {
     if (key.startsWith("rec:")) {
+      // The private contact subdocument is not removed with its parent.
+      try { await deleteDoc(familyContactDoc(key.slice(4))); } catch (_) { /* none */ }
       await deleteDoc(familyDoc(key.slice(4)));
     }
 
@@ -966,6 +974,40 @@ function wireFamilyAddPicker(famKey, existingMembers) {
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") e.preventDefault(); });
   input.addEventListener("blur", () => {
     setTimeout(() => suggestions.classList.add("hidden"), 150);
+  });
+}
+
+// The contact card on an open family: load what is saved, save on demand. A
+// "legacy" family (no Firestore record yet) has nowhere to keep one, so the
+// card explains that adding a member creates the record first.
+async function wireFamilyContact(famKey) {
+  const fields = document.getElementById("fcFields");
+  const saveBtn = document.getElementById("fcSaveBtn");
+  if (!fields || !saveBtn) return;
+  if (!famKey.startsWith("rec:")) {
+    fields.innerHTML = `<p class="field-hint">${esc(t("contact.legacyNote"))}</p>`;
+    saveBtn.classList.add("hidden");
+    return;
+  }
+  const familyId = famKey.slice(4);
+  fields.innerHTML = contactFieldsHtml("fc");
+  try {
+    const snap = await getDoc(familyContactDoc(familyId));
+    if (snap.exists()) fillContactForm("fc", snap.data());
+  } catch (err) {
+    console.warn("[admin] family contact load failed:", err);
+  }
+  saveBtn.addEventListener("click", async () => {
+    saveBtn.disabled = true;
+    try {
+      await saveContact(familyId, readContactForm("fc"));
+      setStatus(t("status.contactSaved"), "success");
+    } catch (err) {
+      console.error("[admin] family contact save failed:", err);
+      setStatus(t("status.contactFailed"), "error");
+    } finally {
+      saveBtn.disabled = false;
+    }
   });
 }
 
@@ -1385,45 +1427,74 @@ function renderBioSamples() {
 }
 
 // ── Family contact (施主・ご遺族の連絡先) ────────────────────────────────────
-// Lives in individuals/{id}/private/contact, NOT on the person document: the
-// person is publicly readable for the kiosk, and a relative's address, phone
-// and email must not be. Only this site's staff can read or write it (rules).
+// One per FAMILY. Lives in families/{id}/private/contact, not on the family
+// document: the family is publicly readable for the kiosk, and a relative's
+// address, phone and email must not be. Only this site's staff can read or
+// write it (rules). The same fields appear on the "create a family" page
+// (prefix "nf") and on an existing family's page (prefix "fc"), so they are
+// rendered from one template keyed by that prefix.
 const CONTACT_FIELDS = ["name", "kana", "relation", "note", "address", "phone", "email"];
+const CONTACT_RELATIONS = ["self", "spouse", "child", "grandchild", "other"];
 
-function readContactForm() {
-  const get = (id) => (document.getElementById(id)?.value || "").trim();
+function contactFieldsHtml(prefix) {
+  const input = (key, id, type = "text") =>
+    `<div class="field"><label for="${prefix}${id}">${esc(t(`contact.${key}`))}</label>
+       <input id="${prefix}${id}" type="${type}" placeholder="${esc(t(`ph.contact${id}`))}" autocomplete="off" /></div>`;
+  const radios = CONTACT_RELATIONS.map((v) =>
+    `<label class="radio-option"><input type="radio" name="${prefix}Relation" value="${v}" /><span>${esc(t(`rel.${v}`))}</span></label>`
+  ).join("");
+  return `
+    <div class="form-row">${input("name", "Name")}${input("kana", "Kana")}</div>
+    <div class="field"><label>${esc(t("contact.relation"))}</label><div class="radio-row">${radios}</div></div>
+    <div class="field"><label for="${prefix}Note">${esc(t("contact.note"))}</label>
+      <textarea id="${prefix}Note" maxlength="100" placeholder="${esc(t("ph.contactNote"))}"></textarea></div>
+    ${input("address", "Address")}
+    <div class="form-row">${input("phone", "Phone", "tel")}${input("email", "Email", "email")}</div>`;
+}
+
+function readContactForm(prefix) {
+  const get = (id) => (document.getElementById(prefix + id)?.value || "").trim();
   return {
-    name: get("contactName"),
-    kana: get("contactKana"),
-    relation: document.querySelector('input[name="contactRelation"]:checked')?.value || "",
-    note: get("contactNote"),
-    address: get("contactAddress"),
-    phone: get("contactPhone"),
-    email: get("contactEmail"),
+    name: get("Name"),
+    kana: get("Kana"),
+    relation: document.querySelector(`input[name="${prefix}Relation"]:checked`)?.value || "",
+    note: get("Note"),
+    address: get("Address"),
+    phone: get("Phone"),
+    email: get("Email"),
   };
 }
 
-function fillContactForm(c) {
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ""; };
-  set("contactName", c?.name);
-  set("contactKana", c?.kana);
-  set("contactNote", c?.note);
-  set("contactAddress", c?.address);
-  set("contactPhone", c?.phone);
-  set("contactEmail", c?.email);
-  document.querySelectorAll('input[name="contactRelation"]').forEach((r) => {
+function fillContactForm(prefix, c) {
+  const set = (id, v) => { const el = document.getElementById(prefix + id); if (el) el.value = v || ""; };
+  set("Name", c?.name);
+  set("Kana", c?.kana);
+  set("Note", c?.note);
+  set("Address", c?.address);
+  set("Phone", c?.phone);
+  set("Email", c?.email);
+  document.querySelectorAll(`input[name="${prefix}Relation"]`).forEach((r) => {
     r.checked = !!c && r.value === c.relation;
   });
 }
 
-/** Save the contact for a person; an all-empty form removes the document. */
-async function saveContact(personId) {
-  const c = readContactForm();
+/** Save a family's contact; an all-empty form removes the document. */
+async function saveContact(familyId, c) {
   if (CONTACT_FIELDS.some((k) => c[k])) {
-    await setDoc(personContactDoc(personId), { ...c, tenant_id: TENANT_ID, updated_at: serverTimestamp() });
+    await setDoc(familyContactDoc(familyId), { ...c, tenant_id: TENANT_ID, updated_at: serverTimestamp() });
   } else {
-    try { await deleteDoc(personContactDoc(personId)); } catch (_) { /* nothing to remove */ }
+    try { await deleteDoc(familyContactDoc(familyId)); } catch (_) { /* nothing to remove */ }
   }
+}
+
+/** The "create a family" page's contact fields. Re-rendered on a language
+ *  switch, keeping whatever was typed. */
+function renderNfContact() {
+  const wrap = document.getElementById("nfContact");
+  if (!wrap) return;
+  const kept = wrap.children.length ? readContactForm("nf") : null;
+  wrap.innerHTML = contactFieldsHtml("nf");
+  if (kept) fillContactForm("nf", kept);
 }
 
 function readForm() {
@@ -1658,144 +1729,31 @@ function initFamilyPicker() {
   });
 }
 
-// ── "New Family" tab — group existing profiles into one family ────────────────
-// A "family" is just a set of profiles that all reference each other via
-// related_persons (a clique). This tab lets an admin build that set directly —
-// searching existing profiles and adding them — instead of opening each profile
-// and linking one-by-one. Adding someone who's already in a family pulls their
-// whole family in too, so an individual can be dropped straight into an
-// existing family (or two families merged). Saving is purely additive: it only
-// adds the mutual links, never removes any existing one.
+// ── "New Family" tab — create a family record ─────────────────────────────────
+// A family record is created here with just its name (and, optionally, the
+// family contact). Members are added afterwards — from the person form's
+// "先祖（家）との連携" picker, or from the family's own page under
+// 登録データ一覧 — so this page stays a single, simple step.
 
-function renderFamilyBuilder() {
-  const list = document.getElementById("nfSelected");
+function updateNfSaveState() {
   const saveBtn = document.getElementById("nfSaveBtn");
-  if (!list) return;
-  list.innerHTML = familyBuilder.map((p) => `
-    <li class="family-tag">
-      <span class="family-tag-text">
-        <span class="family-tag-name">${esc(personName(p))}</span>
-        ${p.kaimyo ? `<span class="family-tag-kaimyo">${esc(p.kaimyo)}</span>` : ""}
-      </span>
-      <button type="button" class="family-tag-remove" data-id="${p.id}" aria-label="Remove">✕</button>
-    </li>`).join("");
-  list.querySelectorAll(".family-tag-remove").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      familyBuilder = familyBuilder.filter((p) => p.id !== btn.dataset.id);
-      renderFamilyBuilder();
-    });
-  });
-  // A family only needs a name — members are optional (an empty family is fine).
   const name = (document.getElementById("nfName")?.value || "").trim();
   if (saveBtn) saveBtn.disabled = !name;
-  // Once the builder holds the maximum, close the search so the cap is visible
-  // at a glance instead of every pick being refused one by one.
-  const search = document.getElementById("nfSearch");
-  if (search) {
-    const full = familyBuilder.length >= MAX_FAMILY_MEMBERS;
-    search.disabled = full;
-    search.placeholder = full ? t("fi.familyFull", { max: MAX_FAMILY_MEMBERS }) : t("nf.searchPh");
-  }
-}
-
-function addToFamilyBuilder(id) {
-  const p = allProfiles.find((x) => x.id === id);
-  if (!p) return;
-  // Count what this pick would add — the person plus any relatives pulled in
-  // below — and refuse the whole pick if it would push the family past the cap.
-  // Partially adding a family would split a group that is meant to stay whole.
-  const inBuilder = new Set(familyBuilder.map((r) => r.id));
-  const incoming = [p.id, ...(p.related_persons || [])]
-    .filter((rid) => !inBuilder.has(rid) && allProfiles.some((x) => x.id === rid));
-  if (familyBuilder.length + new Set(incoming).size > MAX_FAMILY_MEMBERS) {
-    setStatus(t("nf.limit", { name: personName(p) || "—", max: MAX_FAMILY_MEMBERS }), "error");
-    return;
-  }
-  const push = (person) => {
-    if (person && !familyBuilder.find((r) => r.id === person.id)) {
-      familyBuilder.push({
-        id: person.id, first_name: person.first_name,
-        last_name: person.last_name, kaimyo: person.kaimyo || person.posthumous_name || "",
-      });
-      return true;
-    }
-    return false;
-  };
-  push(p);
-  // Pull in the person's existing family so moving someone into a family (or
-  // merging two families) links the whole group, not just this one person.
-  let pulled = 0;
-  for (const rid of (p.related_persons || [])) {
-    if (push(allProfiles.find((x) => x.id === rid))) pulled++;
-  }
-  renderFamilyBuilder();
-  if (pulled) {
-    const name = personName(p) || "—";
-    setStatus(t("nf.pulledIn", { name, n: pulled }), "info");
-  }
 }
 
 function initFamilyBuilder() {
-  const input = document.getElementById("nfSearch");
-  const suggestions = document.getElementById("nfSuggestions");
-  const saveBtn = document.getElementById("nfSaveBtn");
-  if (!input || !suggestions) return;
-
-  input.addEventListener("input", () => {
-    const q = input.value.toLowerCase().trim();
-    if (!q) { suggestions.classList.add("hidden"); return; }
-
-    const matches = allProfiles.filter((p) => {
-      if (familyBuilder.find((r) => r.id === p.id)) return false;
-      return matchesNameQuery(p, q) || matchesKaimyoQuery(p, q);
-    }).slice(0, 6);
-
-    if (!matches.length) { suggestions.classList.add("hidden"); return; }
-
-    suggestions.innerHTML = matches.map((p) => {
-      const initials = ((p.last_name || "").charAt(0) + (p.first_name || "").charAt(0)) || "✦";
-      const kaimyo = p.kaimyo || p.posthumous_name || "";
-      const inFamily = (p.related_persons || []).length
-        ? `<span class="suggestion-fam">${esc(p.last_name || "")}家</span>` : "";
-      return `
-      <li class="family-suggestion-item" data-id="${p.id}">
-        <span class="suggestion-avatar">${esc(initials)}</span>
-        <span class="suggestion-body">
-          <span class="suggestion-name">${esc(personName(p))}${p.death_date ? ` <span class="suggestion-year">(${esc(p.death_date.slice(0, 4))})</span>` : ""}${inFamily}</span>
-          ${kaimyo ? `<span class="suggestion-kaimyo">${esc(kaimyo)}</span>` : ""}
-        </span>
-      </li>`;
-    }).join("");
-    suggestions.classList.remove("hidden");
-
-    suggestions.querySelectorAll(".family-suggestion-item").forEach((item) => {
-      item.addEventListener("click", () => {
-        addToFamilyBuilder(item.dataset.id);
-        input.value = "";
-        suggestions.classList.add("hidden");
-        input.focus();
-      });
-    });
-  });
-
-  // Enter here must never bubble anywhere that would navigate away.
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter") e.preventDefault(); });
-
-  document.addEventListener("click", (e) => {
-    if (!input.contains(e.target) && !suggestions.contains(e.target)) {
-      suggestions.classList.add("hidden");
-    }
-  });
-
-  // Typing a name enables "Create family" (members stay optional).
   const nameInput = document.getElementById("nfName");
-  nameInput?.addEventListener("input", renderFamilyBuilder);
-  nameInput?.addEventListener("keydown", (e) => {
+  const saveBtn = document.getElementById("nfSaveBtn");
+  if (!nameInput || !saveBtn) return;
+
+  // Typing a name enables "Create family"; Enter on an empty name does nothing.
+  nameInput.addEventListener("input", updateNfSaveState);
+  nameInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !nameInput.value.trim()) e.preventDefault();
   });
 
-  saveBtn?.addEventListener("click", saveFamilyBuilder);
-  renderFamilyBuilder();
+  saveBtn.addEventListener("click", saveFamilyBuilder);
+  updateNfSaveState();
 }
 
 async function saveFamilyBuilder() {
@@ -1806,48 +1764,30 @@ async function saveFamilyBuilder() {
   const name = raw.endsWith("家") ? raw : `${raw}家`;
 
   const saveBtn = document.getElementById("nfSaveBtn");
-  const ids = familyBuilder.map((p) => p.id);
-  if (ids.length > MAX_FAMILY_MEMBERS) {
-    setStatus(t("fi.familyFull", { max: MAX_FAMILY_MEMBERS }), "error");
-    return;
-  }
   if (saveBtn) saveBtn.disabled = true;
   setStatus(t("nf.saving"), "info");
 
   try {
-    // Create the family record. Members are optional — an empty family is fine.
-    await addDoc(familiesCollection(), withTenant({
+    // Create the family record, empty — members are added later.
+    const ref = await addDoc(familiesCollection(), withTenant({
       name,
-      member_ids: ids,
+      member_ids: [],
       updated_at: serverTimestamp(),
     }));
 
-    // Keep the kiosk working without any kiosk change: link members to each
-    // other via related_persons (additive) so a 2+ member family still
-    // navigates on the visitor-facing kiosk, which reads those links.
-    for (const id of ids) {
-      const others = ids.filter((x) => x !== id);
-      if (!others.length) continue;
-      const snap = await getDoc(personDoc(id));
-      const existing = snap.exists() ? (snap.data().related_persons || []) : [];
-      const merged = [...new Set([...existing, ...others])];
-      if (merged.length !== existing.length) {
-        await updateDoc(personDoc(id), {
-          related_persons: merged,
-          updated_at: serverTimestamp(),
-        });
-      }
+    // The family's contact (optional) goes to its private subdocument.
+    try {
+      await saveContact(ref.id, readContactForm("nf"));
+      fillContactForm("nf", null);
+    } catch (e) {
+      console.warn("[admin] contact save failed:", e);
+      setStatus(t("status.contactFailed"), "error");
     }
 
-    // Refresh caches so the new family shows everywhere.
-    const snap = await getDocs(personsCollection());
-    allProfiles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    dashboardPersons = allProfiles;
     await loadFamilies();
 
-    familyBuilder = [];
     if (nameEl) nameEl.value = "";
-    renderFamilyBuilder();
+    updateNfSaveState();
     setStatus(t("nf.created", { name }), "success");
 
     // Jump to the Family tab so the new family is visible right away.
@@ -1915,12 +1855,6 @@ async function handleSave(e) {
       missing.push(e.message || String(e));
     }
 
-    try {
-      await saveContact(personId);
-    } catch (e) {
-      console.warn("[admin] contact save failed:", e);
-      missing.push(t("status.contactFailed"));
-    }
 
     // If a new cover is staged while an old one exists, queue the old one for deletion
     if (stagedCover && existingCover && !removedMediaIds.includes(existingCover.id)) {
@@ -2091,15 +2025,6 @@ async function loadForEdit(person) {
     console.warn("[admin] loadForEdit media failed:", err);
   }
 
-  // Family contact (private subdocument) — cleared first so a profile without
-  // one never shows the previous profile's details.
-  fillContactForm(null);
-  try {
-    const cSnap = await getDoc(personContactDoc(person.id));
-    if (cSnap.exists()) fillContactForm(cSnap.data());
-  } catch (err) {
-    console.warn("[admin] loadForEdit contact failed:", err);
-  }
 
   const name = personName(person);
   const saveBtn = document.getElementById("saveBtn");
@@ -2193,9 +2118,6 @@ async function deleteProfile(person) {
   } catch (linkErr) {
     console.warn("[admin] family link cleanup skipped:", linkErr.message);
   }
-
-  // The private contact subdocument is not removed with its parent.
-  try { await deleteDoc(personContactDoc(person.id)); } catch (_) { /* none, or already gone */ }
 
   // Always delete the person document.
   try {
@@ -2488,6 +2410,7 @@ function syncLangButtons() {
 /** Re-translate everything that JS rendered when the language changes. */
 function retranslateDynamic() {
   renderBioSamples();
+  renderNfContact();
   syncLangButtons();
   setText("pageTitle", currentPageTitle());
   setText("pageSubtitle", currentSection === "dashboard" ? t(`sub.${activeSearchTab}`) : t(`sub.${currentSection}`));
@@ -2549,6 +2472,7 @@ export function initAdminPortal() {
   initStaffPanel({ esc, setStatus, confirmDialog });
   initUsagePanel({ esc, setStatus, kioskUrl });
   renderBioSamples();
+  renderNfContact();
 
   // Sign out button
   document.getElementById("signOutBtn")?.addEventListener("click", async () => {

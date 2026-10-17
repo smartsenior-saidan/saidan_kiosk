@@ -1811,9 +1811,14 @@ tr[data-key]:hover .drill-chevron {
   box-shadow: none;
 }
 
-/* ---- Family contact (profile form §5) --------------------------------------- */
+/* ---- Family contact (create-family page + open family) ---------------------- */
 
-.contact-hint { margin: -6px 0 12px; }
+.family-contact-field { margin-top: 16px; }
+.family-contact-field > .field-hint { margin-bottom: 10px; }
+.family-contact-card { margin-top: 16px; }
+.family-contact-card .card-title { margin-bottom: 4px; }
+.family-contact-card > .field-hint { margin-bottom: 12px; }
+.family-contact-card .form-actions { margin-top: 12px; }
 
 .radio-row {
   display: flex;

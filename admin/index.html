@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="css/style.css?v=10" />
-    <link rel="stylesheet" href="css/admin.css?v=33" />
+    <link rel="stylesheet" href="css/admin.css?v=34" />
   </head>
   <body>
     <div class="app-shell">
@@ -262,63 +262,10 @@
                     </div>
                   </div>
 
-                  <!-- 5 ── Family contact (optional). Saved to the person's PRIVATE
-                       subdocument, never to the public profile — see rules. -->
+                  <!-- 5 ── Media -->
                   <div class="form-section" data-step="5">
                     <h4 class="form-section-title">
                       <span class="form-section-num">5</span>
-                      <span data-i18n="form.sectionContact">Family contact (optional)</span>
-                    </h4>
-                    <p class="field-hint contact-hint" data-i18n="hint.contact">For the office only — never shown on the kiosk.</p>
-
-                    <div class="form-row">
-                      <div class="field">
-                        <label for="contactName" data-i18n="contact.name">Contact name</label>
-                        <input id="contactName" type="text" placeholder="e.g. 山田 花子" data-i18n-ph="ph.contactName" autocomplete="off" />
-                      </div>
-                      <div class="field">
-                        <label for="contactKana" data-i18n="contact.kana">Reading</label>
-                        <input id="contactKana" type="text" placeholder="e.g. やまだ はなこ" data-i18n-ph="ph.contactKana" autocomplete="off" />
-                      </div>
-                    </div>
-
-                    <div class="field">
-                      <label data-i18n="contact.relation">Relationship</label>
-                      <div class="radio-row">
-                        <label class="radio-option"><input type="radio" name="contactRelation" value="self" /><span data-i18n="rel.self">Self</span></label>
-                        <label class="radio-option"><input type="radio" name="contactRelation" value="spouse" /><span data-i18n="rel.spouse">Spouse</span></label>
-                        <label class="radio-option"><input type="radio" name="contactRelation" value="child" /><span data-i18n="rel.child">Child</span></label>
-                        <label class="radio-option"><input type="radio" name="contactRelation" value="grandchild" /><span data-i18n="rel.grandchild">Grandchild</span></label>
-                        <label class="radio-option"><input type="radio" name="contactRelation" value="other" /><span data-i18n="rel.other">Other</span></label>
-                      </div>
-                    </div>
-
-                    <div class="field">
-                      <label for="contactNote" data-i18n="contact.note">Notes (up to 100 characters)</label>
-                      <textarea id="contactNote" maxlength="100" placeholder="e.g. notes for contacting the family" data-i18n-ph="ph.contactNote"></textarea>
-                    </div>
-
-                    <div class="field">
-                      <label for="contactAddress" data-i18n="contact.address">Address</label>
-                      <input id="contactAddress" type="text" placeholder="e.g. 東京都新宿区〇〇1-2-3" data-i18n-ph="ph.contactAddress" autocomplete="off" />
-                    </div>
-
-                    <div class="form-row">
-                      <div class="field">
-                        <label for="contactPhone" data-i18n="contact.phone">Phone</label>
-                        <input id="contactPhone" type="tel" placeholder="e.g. 090-1234-5678" data-i18n-ph="ph.contactPhone" autocomplete="off" />
-                      </div>
-                      <div class="field">
-                        <label for="contactEmail" data-i18n="contact.email">Email</label>
-                        <input id="contactEmail" type="email" placeholder="e.g. yamada@example.com" data-i18n-ph="ph.contactEmail" autocomplete="off" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- 6 ── Media -->
-                  <div class="form-section" data-step="6">
-                    <h4 class="form-section-title">
-                      <span class="form-section-num">6</span>
                       <span data-i18n="form.sectionMedia">Photos, video &amp; music</span>
                     </h4>
 
@@ -387,15 +334,13 @@
                   <input id="nfName" type="text" placeholder="e.g. 山田家" data-i18n-ph="nf.namePh" autocomplete="off" />
                 </div>
 
-                <div class="field" style="margin-top:12px">
-                  <label data-i18n="nf.members">Family members (optional)</label>
-                  <div class="family-picker">
-                    <div class="family-search-row">
-                      <input id="nfSearch" type="search" placeholder="Search by name or kaimyo…" data-i18n-ph="nf.searchPh" autocomplete="off" />
-                    </div>
-                    <ul class="family-suggestions hidden" id="nfSuggestions"></ul>
-                    <ul class="family-selected" id="nfSelected"></ul>
-                  </div>
+                <!-- Family contact (one per family). Saved to the family's PRIVATE
+                     subdocument, never anywhere the kiosk reads — see rules.
+                     Fields are rendered by admin.js contactFieldsHtml("nf"). -->
+                <div class="field family-contact-field">
+                  <label data-i18n="form.sectionContact">Family contact (optional)</label>
+                  <p class="field-hint" data-i18n="hint.contact">For the office only — never shown on the kiosk.</p>
+                  <div id="nfContact"></div>
                 </div>
 
                 <div class="form-actions">
@@ -644,7 +589,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=84";
+      import { initAdminPortal } from "./js/admin.js?v=85";
       initAdminPortal();
     </script>
   </body>

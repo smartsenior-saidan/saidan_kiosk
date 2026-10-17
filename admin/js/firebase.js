@@ -215,11 +215,11 @@ export function personMediaDoc(personId, mediaId) {
   return doc(personMediaCollection(personId), mediaId);
 }
 
-/** tenants/{TENANT_ID}/individuals/{personId}/private/contact — the family
- *  contact. A PRIVATE subdocument (staff-only in rules) because the person
- *  document is publicly readable for the kiosk. */
-export function personContactDoc(personId) {
-  return doc(personDoc(personId), "private", "contact");
+/** tenants/{TENANT_ID}/families/{familyId}/private/contact — the family's
+ *  contact (one per family). A PRIVATE subdocument (staff-only in rules)
+ *  because the family document is publicly readable for the kiosk. */
+export function familyContactDoc(familyId) {
+  return doc(familyDoc(familyId), "private", "contact");
 }
 
 // Re-export Firestore + Storage helpers so other modules import from one place.
