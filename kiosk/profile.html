@@ -12,7 +12,7 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <meta name="theme-color" content="#0071e3" />
     <link rel="stylesheet" href="css/style.css?v=3" />
-    <link rel="stylesheet" href="css/kiosk.css?v=100" />
+    <link rel="stylesheet" href="css/kiosk.css?v=101" />
     <!-- Pins this kiosk to its memorial site (tenant). Runs before modules. -->
     <script src="js/config.js?v=2"></script>
   </head>
@@ -40,14 +40,6 @@
     <!-- ── Main stage (revealed after load) ── -->
     <div class="m-stage hidden" id="pMain">
 
-      <!-- Right column: posthumous name + name (vertical for JA) -->
-      <div class="m-side m-side-right">
-        <div class="m-name-group">
-          <div class="m-kaimyo hidden" id="pKaimyo"></div>
-          <h1 class="m-name" id="pName"></h1>
-        </div>
-      </div>
-
       <!-- Center: framed photo / slideshow -->
       <div class="m-center">
         <div class="m-photo" id="pPhoto">
@@ -59,22 +51,38 @@
         <div class="m-dots hidden" id="pDots"></div>
       </div>
 
-      <!-- Left column: birth date + death date + age (vertical for JA) -->
-      <div class="m-side m-side-left">
-        <div class="m-info-group">
-          <div class="m-info hidden" id="pBirthBlock">
-            <span class="m-info-label" id="pBirthLabel">生誕</span>
-            <span class="m-info-value" id="pBirthDate"></span>
-          </div>
-          <div class="m-info hidden" id="pDeathBlock">
-            <span class="m-info-label" id="pDeathLabel">没日</span>
-            <span class="m-info-value" id="pDeathDate"></span>
-          </div>
-          <div class="m-info hidden" id="pAgeBlock">
-            <span class="m-info-label" id="pAgeLabel">享年</span>
-            <span class="m-info-value" id="pAge"></span>
+      <!-- The two text columns. In landscape and on phones this wrapper has
+           no box of its own (display: contents) and the columns flank the
+           photo as before; the portrait kiosk turns it into a shaded panel
+           under the photo. -->
+      <div class="m-text-row">
+
+        <!-- Right column: posthumous name + name (vertical for JA) -->
+        <div class="m-side m-side-right">
+          <div class="m-name-group">
+            <div class="m-kaimyo hidden" id="pKaimyo"></div>
+            <h1 class="m-name" id="pName"></h1>
           </div>
         </div>
+
+        <!-- Left column: birth date + death date + age (vertical for JA) -->
+        <div class="m-side m-side-left">
+          <div class="m-info-group">
+            <div class="m-info hidden" id="pBirthBlock">
+              <span class="m-info-label" id="pBirthLabel">生誕</span>
+              <span class="m-info-value" id="pBirthDate"></span>
+            </div>
+            <div class="m-info hidden" id="pDeathBlock">
+              <span class="m-info-label" id="pDeathLabel">没日</span>
+              <span class="m-info-value" id="pDeathDate"></span>
+            </div>
+            <div class="m-info hidden" id="pAgeBlock">
+              <span class="m-info-label" id="pAgeLabel">享年</span>
+              <span class="m-info-value" id="pAge"></span>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- Audio player + biography toggle + memorial video. A direct child of

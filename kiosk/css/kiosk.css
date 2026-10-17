@@ -347,7 +347,8 @@ body.has-tenant-bg .f-member-years {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: clamp(16px, 2.5vh, 28px) 28px 14px clamp(140px, 20vw, 180px);
+  /* Left padding clears the (now larger) floating back button. */
+  padding: clamp(16px, 2.5vh, 28px) 28px 14px clamp(176px, 20vw, 200px);
   background: transparent;
   flex-shrink: 0;
 }
@@ -430,7 +431,7 @@ body.has-tenant-bg .f-member-years {
 /* ── Landscape: back button sits top-left, input row uses normal padding ── */
 @media (orientation: landscape) {
   .search-input-row {
-    padding-left: clamp(140px, 14vw, 180px);
+    padding-left: clamp(176px, 14vw, 200px);
   }
 
   .search-body {
@@ -693,7 +694,7 @@ body.has-tenant-bg .f-member-years {
 }
 
 .results-count {
-  font-size: 1.15rem;
+  font-size: 1.35rem;
   color: var(--color-text-muted);
   padding: 0 4px 10px;
 }
@@ -723,7 +724,7 @@ body.has-tenant-bg .f-member-years {
 }
 
 .fc-name {
-  font-size: 1.9rem;
+  font-size: 2.2rem;
   font-weight: 700;
   color: var(--color-text);
 }
@@ -735,7 +736,7 @@ body.has-tenant-bg .f-member-years {
   text-align: left;
   row-gap: 4px;
   column-gap: 18px;
-  font-size: 1.3rem;
+  font-size: 1.45rem;
   color: var(--color-text-muted);
   margin-bottom: 14px;
 }
@@ -756,9 +757,11 @@ body.has-tenant-bg .f-member-years {
      label wraps ("個人ペー / ジ"). nowrap + a width-scaled font keep each
      label on one line even on the narrower cards left by the scrollbar lane. */
   min-width: 0;
-  height: 60px;
+  height: 64px;
   padding: 0 10px;
-  font-size: clamp(0.85rem, 1.35vw, 1.3rem);
+  /* The old 1.35vw floor rendered ~12px on a portrait tablet — unreadable
+     for the visitors this kiosk serves. 1.2rem is the smallest it gets. */
+  font-size: clamp(1.2rem, 1.7vw, 1.45rem);
   font-weight: 600;
   white-space: nowrap;
   border-radius: 12px;
@@ -980,9 +983,11 @@ body.has-tenant-bg .f-member-years {
 .m-btn-end {
   position: absolute;
   z-index: 30;
-  height: 56px;
-  padding: 0 28px;
-  font-size: 1.1rem;
+  /* Sized for elderly visitors: a tall target with a label that reads from
+     a step back. (Phones shrink these again in their own block.) */
+  height: 68px;
+  padding: 0 32px;
+  font-size: 1.35rem;
   font-weight: 600;
   color: var(--color-text);
   background: #fff;
@@ -1138,6 +1143,14 @@ body.has-tenant-bg .f-member-years {
     transform: translateX(0);
   }
 }
+
+/* The wrapper around the two text columns contributes no box here, so the
+   columns stay direct flex items of the stage (the portrait kiosk block at
+   the end of this file turns it into a real, shaded panel). With the photo
+   now first in the DOM, `order` restores name-right / dates-left. */
+.m-text-row { display: contents; }
+.m-side-right { order: -1; }
+.m-side-left  { order: 1; }
 
 /* Side columns (vertical Japanese text) */
 .m-side {
@@ -2206,35 +2219,38 @@ body.has-tenant-bg .f-member-years {
     position: relative;
     inset: auto;
     min-height: 100%;
-    flex-direction: row-reverse;   /* name column ends up on the right */
-    flex-wrap: wrap;
-    align-items: flex-start;
-    align-content: center;
-    justify-content: center;
-    column-gap: clamp(32px, 7vw, 72px);
-    row-gap: clamp(20px, 3vh, 44px);
-    /* Clear the back/end buttons above and the pinned action bar below. */
-    padding: clamp(96px, 9vh, 130px) clamp(32px, 5vw, 60px) clamp(130px, 12vh, 170px);
-  }
-
-  /* Flex lines are cut in order, so the photo must come first or the name
-     column (first in the DOM) takes the top line by itself. */
-  .m-center     { order: 1; }
-  .m-side-right { order: 2; }
-  .m-side-left  { order: 3; }
-
-  .m-center {
-    flex: 0 0 100%;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
+    gap: clamp(18px, 2vh, 32px);
+    /* Clear the back/end buttons above and the pinned action bar below. */
+    padding: clamp(84px, 6.5vh, 110px) clamp(32px, 5vw, 60px) clamp(104px, 9vh, 130px);
   }
+
+  .m-center   { order: 1; flex: none; }
+  .m-text-row { order: 2; }
 
   .m-photo {
-    width: clamp(234px, min(52vw, 32.4vh), 504px);
+    width: clamp(234px, min(52vw, 31vh), 504px);
     aspect-ratio: 1 / 1;
   }
 
-  /* Both text groups sit centred against each other on their line, so the
-     name and kaimyo float at the middle of the taller dates column. */
+  /* ── Shaded text panel ──
+     A translucent sheet behind the vertical text so it stays legible over
+     any site background; name/kaimyo on the right, dates on the left. */
+  .m-text-row {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: center;
+    column-gap: clamp(28px, 6vw, 64px);
+    max-width: 100%;
+    padding: clamp(20px, 2.4vh, 32px) clamp(36px, 5vw, 56px);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.62);
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.08);
+  }
+
   .m-side {
     flex: 0 0 auto;
     align-self: center;
@@ -2247,32 +2263,37 @@ body.has-tenant-bg .f-member-years {
   .m-info-group { align-items: flex-start; }
   .lang-ja .m-info-group > #pAgeBlock { align-self: center; }
 
-  /* The beside-the-photo spacer is meaningless here; the row gap does it. */
+  /* The beside-the-photo spacer is meaningless here; the column gap does it. */
   .m-kaimyo.hidden + .m-name { margin-left: 0; }
 
-  /* Sized so the longest realistic column (a 13-character era date) fits
-     under the photo on a 1368px-tall screen; taller screens get the same
-     size, shorter ones scroll. */
+  /* Sized for elderly visitors, and so the longest realistic column (a
+     13-character era date) still fits under the photo on a 1368px-tall
+     screen. Taller screens get the same size; shorter ones scroll. */
   .m-name {
-    font-size: clamp(2rem, 3.6vh, 2.8rem);
-    letter-spacing: 0.4em;
+    font-size: clamp(2.2rem, 4vh, 3.2rem);
+    letter-spacing: 0.36em;
   }
   /* Kaimyo a step larger than the dates, a step under the name. */
   .m-kaimyo {
-    font-size: clamp(1.6rem, 2.9vh, 2.3rem);
-    letter-spacing: 0.28em;
+    font-size: clamp(1.8rem, 3.2vh, 2.6rem);
+    letter-spacing: 0.26em;
   }
   .m-info-value {
-    font-size: clamp(1.4rem, 2.55vh, 2.1rem);
-    letter-spacing: 0.28em;
+    font-size: clamp(1.5rem, 2.65vh, 2.2rem);
+    letter-spacing: 0.24em;
   }
   .m-info-label {
-    font-size: clamp(1.05rem, 1.7vh, 1.45rem);
+    font-size: clamp(1.15rem, 1.9vh, 1.6rem);
   }
 
   /* Action bar stays pinned to the bottom of the (now scrollable) stage. */
   .m-bottom {
     bottom: clamp(24px, 3vh, 40px);
+  }
+  .m-link {
+    height: 64px;
+    padding: 0 40px;
+    font-size: 1.35rem;
   }
 
   /* ── Family: two columns, however many members ──
@@ -2298,5 +2319,17 @@ body.has-tenant-bg .f-member-years {
   }
   .f-stage {
     padding: clamp(110px, 10vh, 150px) clamp(32px, 5vw, 60px) 48px;
+  }
+  /* The family name is the page's title; make it read from a step back. */
+  .f-family-name {
+    font-size: clamp(3rem, 8vw, 5rem);
+  }
+  .f-subtitle {
+    font-size: clamp(1.2rem, 2.4vw, 1.6rem);
+  }
+  .f-slideshow-btn {
+    height: 68px;
+    padding: 0 48px;
+    font-size: 1.35rem;
   }
 }

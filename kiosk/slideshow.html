@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" />
-    <link rel="stylesheet" href="css/kiosk.css?v=100" />
+    <link rel="stylesheet" href="css/kiosk.css?v=101" />
     <script src="js/config.js?v=2"></script>
     <style>
       /* ── Slideshow nav bar ─────────────────────────────────────────────── */
@@ -126,12 +126,6 @@
 
     <!-- Profile stage — same structure as profile.html -->
     <div class="m-stage hidden" id="pMain">
-      <div class="m-side m-side-right">
-        <div class="m-name-group">
-          <div class="m-kaimyo hidden" id="pKaimyo"></div>
-          <h1 class="m-name" id="pName"></h1>
-        </div>
-      </div>
       <div class="m-center">
         <div class="m-photo" id="pPhoto">
           <div class="p-slides" id="pSlides"></div>
@@ -141,19 +135,28 @@
         </div>
         <div class="m-dots hidden" id="pDots"></div>
       </div>
-      <div class="m-side m-side-left">
-        <div class="m-info-group">
-          <div class="m-info hidden" id="pBirthBlock">
-            <span class="m-info-label" id="pBirthLabel">生誕</span>
-            <span class="m-info-value" id="pBirthDate"></span>
+      <!-- Text columns; see profile.html for the wrapper's role. -->
+      <div class="m-text-row">
+        <div class="m-side m-side-right">
+          <div class="m-name-group">
+            <div class="m-kaimyo hidden" id="pKaimyo"></div>
+            <h1 class="m-name" id="pName"></h1>
           </div>
-          <div class="m-info hidden" id="pDeathBlock">
-            <span class="m-info-label" id="pDeathLabel">没日</span>
-            <span class="m-info-value" id="pDeathDate"></span>
-          </div>
-          <div class="m-info hidden" id="pAgeBlock">
-            <span class="m-info-label" id="pAgeLabel">享年</span>
-            <span class="m-info-value" id="pAge"></span>
+        </div>
+        <div class="m-side m-side-left">
+          <div class="m-info-group">
+            <div class="m-info hidden" id="pBirthBlock">
+              <span class="m-info-label" id="pBirthLabel">生誕</span>
+              <span class="m-info-value" id="pBirthDate"></span>
+            </div>
+            <div class="m-info hidden" id="pDeathBlock">
+              <span class="m-info-label" id="pDeathLabel">没日</span>
+              <span class="m-info-value" id="pDeathDate"></span>
+            </div>
+            <div class="m-info hidden" id="pAgeBlock">
+              <span class="m-info-label" id="pAgeLabel">享年</span>
+              <span class="m-info-value" id="pAge"></span>
+            </div>
           </div>
         </div>
       </div>
