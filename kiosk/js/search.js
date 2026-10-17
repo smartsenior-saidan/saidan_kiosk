@@ -311,16 +311,18 @@ function renderResults(results, container) {
       window.location.href = dest;
     };
 
+    // `via=search` marks the visit as having started from the on-screen
+    // search, as opposed to a QR / NFC / pasted link (see access-log.js).
     if (inFamily) {
       card.querySelector('.fc-btn-individual').addEventListener('click', () => {
-        goTo(`profile.html?person=${encodeURIComponent(person.id)}`);
+        goTo(`profile.html?person=${encodeURIComponent(person.id)}&via=search`);
       });
       card.querySelector('.fc-btn-family').addEventListener('click', () => {
-        goTo(`family.html?person=${encodeURIComponent(person.id)}`);
+        goTo(`family.html?person=${encodeURIComponent(person.id)}&via=search`);
       });
     } else {
       card.querySelector('.fc-btn-detail').addEventListener('click', () => {
-        goTo(`profile.html?person=${encodeURIComponent(person.id)}`);
+        goTo(`profile.html?person=${encodeURIComponent(person.id)}&via=search`);
       });
     }
 

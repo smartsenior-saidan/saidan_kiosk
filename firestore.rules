@@ -154,6 +154,36 @@ service cloud.firestore {
                               && withinFamilyLimit();
         allow delete: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
       }
+
+      // ── Memorial access log ─────────────────────────────────────────────
+      // One record per memorial page view, written anonymously by the kiosk
+      // (kiosk/js/access-log.js) and read by staff on the 利用状況 tab.
+      // Append-only: nothing is ever edited or removed, and the open create
+      // accepts only these fields at these sizes — with `ts` pinned to the
+      // server clock — so it cannot be used to store anything else.
+      match /access_logs/{logId} {
+        allow read: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
+        allow create: if request.resource.data.keys().hasOnly(
+                          ['person_id', 'name', 'page', 'entry', 'dev', 'ts', 'at', 'date', 'ym', 'h', 'w'])
+                      && request.resource.data.person_id is string
+                      && request.resource.data.person_id.size() <= 64
+                      && request.resource.data.name is string
+                      && request.resource.data.name.size() <= 100
+                      && request.resource.data.page in ['profile', 'family']
+                      && request.resource.data.entry in ['search', 'link']
+                      && request.resource.data.dev is string
+                      && request.resource.data.dev.size() <= 32
+                      && request.resource.data.at is string
+                      && request.resource.data.at.size() <= 40
+                      && request.resource.data.date is string
+                      && request.resource.data.date.size() == 10
+                      && request.resource.data.ym is string
+                      && request.resource.data.ym.size() == 7
+                      && request.resource.data.h is int
+                      && request.resource.data.w is int
+                      && request.resource.data.ts == request.time;
+        allow update, delete: if false;
+      }
     }
 
     // ── Kiosk devices ───────────────────────────────────────────────────────

@@ -31,9 +31,10 @@ import {
   personMediaCollection,
   personMediaDoc,
   DISPLAY_NAME,
-} from "./firebase.js?v=13";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=51";
-import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=7";
+} from "./firebase.js?v=14";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=52";
+import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=8";
+import { initUsagePanel, openUsagePanel } from "./usage.js?v=1";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -311,6 +312,7 @@ function showSection(name, opts = {}) {
   // whichever tab is currently active.
   if (name === "dashboard") loadSearchData();
   if (name === "staff") openStaffPanel();
+  if (name === "usage") openUsagePanel();
 
   // Give this section its own browser-history entry so Back/Forward moves
   // between in-app sections instead of leaving the app. Skipped when we're
@@ -2446,6 +2448,7 @@ export function initAdminPortal() {
   // actually refuses a tampered session on every read and write.
   if (ROLE === "super") document.getElementById("navStaff")?.classList.remove("hidden");
   initStaffPanel({ esc, setStatus, confirmDialog });
+  initUsagePanel({ esc, setStatus, kioskUrl });
 
   // Sign out button
   document.getElementById("signOutBtn")?.addEventListener("click", async () => {

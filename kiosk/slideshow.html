@@ -459,7 +459,7 @@
       // Back / End Visit
       document.getElementById('snavBack').addEventListener('click', () => {
         const rootId = personId || '';
-        window.location.href = `family.html?person=${rootId}&site=${window.__ENV__.TENANT_ID}`;
+        window.location.href = `family.html?person=${rootId}&via=slideshow&site=${window.__ENV__.TENANT_ID}`;
       });
 
       document.getElementById('snavEnd').addEventListener('click', () => {

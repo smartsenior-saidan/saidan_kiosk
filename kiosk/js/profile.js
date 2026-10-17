@@ -6,6 +6,7 @@ import {
   getPersonById,
   personMediaCollection,
 } from "./firebase.js?v=2";
+import { logAccess } from "./access-log.js?v=1";
 
 const ADVANCE_MS = 6000;
 
@@ -198,12 +199,14 @@ function wireNav() {
     backBtn.addEventListener('click', () => {
       const via = new URLSearchParams(window.location.search).get('via');
       const personId = new URLSearchParams(window.location.search).get('person');
+      // `via=profile` tells the next page this is the same visit, so the
+      // access log keeps the entry (search vs QR/link) it started with.
       if (via === 'family' && personId) {
         const rootId = sessionStorage.getItem('kiosk_person') || personId;
-        window.location.href = `family.html?person=${rootId}&site=${window.__ENV__.TENANT_ID}`;
+        window.location.href = `family.html?person=${rootId}&via=profile&site=${window.__ENV__.TENANT_ID}`;
       } else if (via === 'slideshow' && personId) {
         const rootId = sessionStorage.getItem('kiosk_person') || personId;
-        window.location.href = `slideshow.html?person=${rootId}&site=${window.__ENV__.TENANT_ID}`;
+        window.location.href = `slideshow.html?person=${rootId}&via=profile&site=${window.__ENV__.TENANT_ID}`;
       } else {
         window.location.href = `index.html?restore=search&site=${window.__ENV__.TENANT_ID}`;
       }
@@ -403,6 +406,7 @@ export async function initProfileScreen() {
       errorScreen('ご遺族の記録が見つかりませんでした。');
       return;
     }
+    logAccess(person, 'profile');
 
     // Per-person background overrides the tenant background
     if (person.background_url) {

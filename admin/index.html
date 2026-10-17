@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="css/style.css?v=10" />
-    <link rel="stylesheet" href="css/admin.css?v=29" />
+    <link rel="stylesheet" href="css/admin.css?v=30" />
   </head>
   <body>
     <div class="app-shell">
@@ -34,6 +34,12 @@
               <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
             </span>
             <span data-i18n="nav.dashboard">Search</span>
+          </button>
+          <button class="nav-item" data-section="usage">
+            <span class="nav-icon">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
+            </span>
+            <span data-i18n="nav.usage">Usage</span>
           </button>
           <!-- Super admins only — admin.js unhides this once it knows the role -->
           <button class="nav-item hidden" data-section="staff" id="navStaff">
@@ -343,6 +349,125 @@
             </div>
           </section>
 
+          <!-- ══ USAGE — how often memorials are opened (admin/js/usage.js) ══ -->
+          <section id="sec-usage" class="section">
+            <div class="usage-toolbar">
+              <span class="usage-label" data-i18n="us.period">Period:</span>
+              <button type="button" class="us-pill on" data-days="30" data-i18n="us.d30">30 days</button>
+              <button type="button" class="us-pill" data-days="90" data-i18n="us.d90">90 days</button>
+              <button type="button" class="us-pill" data-days="365" data-i18n="us.d365">1 year</button>
+              <button type="button" class="us-pill" data-days="0" data-i18n="us.all">All time</button>
+              <span class="usage-label usage-label-gap" data-i18n="us.entry">Entry:</span>
+              <button type="button" class="us-pill on" data-entry="all" data-i18n="us.entryAll">All</button>
+              <button type="button" class="us-pill" data-entry="search" data-i18n="us.entrySearch">From search</button>
+              <button type="button" class="us-pill" data-entry="link" data-i18n="us.entryLink">QR / link</button>
+              <button type="button" class="btn-secondary usage-reload" id="usReload" data-i18n="us.reload">↻ Reload</button>
+            </div>
+            <p class="usage-since" id="usSince"></p>
+
+            <div class="usage-tiles">
+              <button type="button" class="us-tile" data-list="total">
+                <span class="tile-label"><span data-i18n="us.tileTotal">Views</span> <span class="tile-more" data-i18n="us.detail">▶ details</span></span>
+                <span class="tile-value" id="usTileTotal">-</span>
+              </button>
+              <button type="button" class="us-tile" data-list="fams">
+                <span class="tile-label"><span data-i18n="us.tileFams">Families viewed</span> <span class="tile-more" data-i18n="us.detail">▶ details</span></span>
+                <span class="tile-value" id="usTileFams">-</span>
+                <span class="tile-sub" id="usTileFamsSub"></span>
+              </button>
+              <button type="button" class="us-tile" data-list="repeat">
+                <span class="tile-label"><span data-i18n="us.tileRepeat">Returning devices</span> <span class="tile-more" data-i18n="us.detail">▶ details</span></span>
+                <span class="tile-value" id="usTileRepeat">-</span>
+                <span class="tile-sub" data-i18n="us.tileRepeatSub">Devices that opened a memorial 2+ times in the period</span>
+              </button>
+              <button type="button" class="us-tile" data-list="risk">
+                <span class="tile-label"><span data-i18n="us.tileRisk">Low usage (risk)</span> <span class="tile-more" data-i18n="us.detail">▶ details</span></span>
+                <span class="tile-value" id="usTileRisk">-</span>
+                <span class="tile-sub" id="usTileRiskSub"></span>
+              </button>
+            </div>
+
+            <section class="card usage-panel hidden" id="usListPanel">
+              <div class="card-row usage-panel-head">
+                <h3 class="card-title" id="usLpTitle"></h3>
+                <button type="button" class="btn-secondary" id="usCloseList" data-i18n="us.close">Close</button>
+              </div>
+              <div class="profiles-table-wrap usage-scroll">
+                <table class="profiles-table usage-table"><thead id="usLpHead"></thead><tbody id="usLpRows"></tbody></table>
+              </div>
+            </section>
+
+            <div class="usage-charts">
+              <section class="card">
+                <h3 class="card-title" data-i18n="us.chartMonth">Views by month</h3>
+                <div class="usage-bars" id="usChartMonth"></div>
+                <div class="usage-bar-labels" id="usChartMonthLbl"></div>
+              </section>
+              <section class="card">
+                <h3 class="card-title" data-i18n="us.heatmap">Weekday × hour (darker = more)</h3>
+                <div class="profiles-table-wrap"><table class="us-heat" id="usHeatmap"></table></div>
+              </section>
+            </div>
+
+            <section class="card usage-fams">
+              <div class="usage-toolbar usage-toolbar-tight">
+                <h3 class="card-title" data-i18n="us.famTitle">Usage by family</h3>
+                <input id="usFamFilter" type="search" placeholder="Filter by family or name" data-i18n-ph="us.famFilterPh" autocomplete="off" />
+                <label class="usage-check"><input id="usOnlyViewed" type="checkbox" /> <span data-i18n="us.onlyViewed">Viewed only</span></label>
+                <span class="usage-label usage-label-gap" data-i18n="us.freq">Usage:</span>
+                <button type="button" class="us-pill on" data-risk="all" data-i18n="us.freqAll">All</button>
+                <button type="button" class="us-pill" data-risk="0" data-i18n="us.freqHigh">🟢 High</button>
+                <button type="button" class="us-pill" data-risk="1" data-i18n="us.freqMid">🟡 Mid</button>
+                <button type="button" class="us-pill" data-risk="2" data-i18n="us.freqLow">🔴 Low</button>
+                <button type="button" class="btn-secondary usage-reload" id="usCsv">CSV</button>
+              </div>
+              <p class="field-hint usage-hint" data-i18n="us.freqHint">Usage: 🟢 high = viewed within a year / 🟡 mid = last view over a year ago / 🔴 low = never viewed. Last viewed: 🟢 within 90 days / 🟡 within a year / 🔴 over a year / ⚪ no record. Click a row for details.</p>
+              <div class="profiles-table-wrap">
+                <table class="profiles-table usage-table">
+                  <thead><tr>
+                    <th data-i18n="us.colFamily">Family</th>
+                    <th class="num" data-i18n="us.colViews">Views</th>
+                    <th class="num" data-i18n="us.colSplit">Search / QR</th>
+                    <th class="num" data-i18n="us.colDevs">Devices</th>
+                    <th data-i18n="us.colLast">Last viewed</th>
+                    <th data-i18n="us.colFreq">Usage</th>
+                    <th data-i18n="us.colReason">Reason</th>
+                  </tr></thead>
+                  <tbody id="usFamRows"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="card usage-panel usage-detail hidden" id="usDetail">
+              <div class="card-row usage-panel-head">
+                <div><span class="usage-detail-title" id="usDTitle"></span> <span class="usage-detail-sub" id="usDSub"></span></div>
+                <div class="card-row-actions">
+                  <button type="button" class="btn-secondary" id="usCopyLink" data-i18n="us.copyLink">🔗 Copy kiosk URL</button>
+                  <button type="button" class="btn-secondary" id="usCloseDetail" data-i18n="us.close">Close</button>
+                </div>
+              </div>
+              <p class="usage-detail-risk" id="usDRisk"></p>
+              <div class="usage-charts">
+                <div class="usage-subcard">
+                  <div class="usage-subtitle" data-i18n="us.dMonth">By month</div>
+                  <div class="usage-bars usage-bars-sm" id="usDMonth"></div>
+                  <div class="usage-bar-labels" id="usDMonthLbl"></div>
+                </div>
+                <div class="usage-subcard">
+                  <div class="usage-subtitle" data-i18n="us.dHeat">Weekday × hour</div>
+                  <div class="profiles-table-wrap"><table class="us-heat" id="usDHeat"></table></div>
+                </div>
+              </div>
+              <div class="usage-subtitle" data-i18n="us.dHistory">View history (newest first, up to 100)</div>
+              <div class="profiles-table-wrap">
+                <table class="profiles-table usage-table">
+                  <thead><tr><th data-i18n="us.colWhen">When</th><th data-i18n="us.colPage">Opened</th><th data-i18n="us.colEntry">Entry</th><th data-i18n="us.colDev">Device</th></tr></thead>
+                  <tbody id="usDRows"></tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+
           <!-- ══ STAFF — super admins only ══ -->
           <section id="sec-staff" class="section">
             <div class="form-layout staff-layout">
@@ -461,7 +586,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=79";
+      import { initAdminPortal } from "./js/admin.js?v=80";
       initAdminPortal();
     </script>
   </body>

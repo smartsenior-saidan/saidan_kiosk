@@ -35,8 +35,8 @@ import {
   superAdminDoc,
   superAdminsCollection,
   COLLECTIONS,
-} from "./firebase.js?v=13";
-import { t } from "./i18n.js?v=51";
+} from "./firebase.js?v=14";
+import { t } from "./i18n.js?v=52";
 
 // Helpers handed in by admin.js so this module shares its toast, confirm
 // dialog and escaper instead of growing its own.

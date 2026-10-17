@@ -40,6 +40,7 @@
     <script type="module">
       import { getPersonById, getDocs, getDoc, personDoc } from "./js/firebase.js?v=2";
       import { applyTenantBackground } from "./js/tenant-bg.js?v=2";
+      import { logAccess } from "./js/access-log.js?v=1";
       applyTenantBackground();
 
       document.getElementById('fnavBack').addEventListener('click', () => {
@@ -50,7 +51,7 @@
       });
 
       document.getElementById('fnavSlideshow').addEventListener('click', () => {
-        window.location.href = `slideshow.html?person=${encodeURIComponent(personId)}&site=${window.__ENV__.TENANT_ID}`;
+        window.location.href = `slideshow.html?person=${encodeURIComponent(personId)}&via=family&site=${window.__ENV__.TENANT_ID}`;
       });
 
       const params   = new URLSearchParams(window.location.search);
@@ -74,6 +75,7 @@
           try {
             const root = await getPersonById(personId);
             if (!root) { showError('記録が見つかりませんでした。'); return; }
+            logAccess(root, 'family');
 
             // Collect all member IDs: root + related
             const relatedIds = root.related_persons || [];
