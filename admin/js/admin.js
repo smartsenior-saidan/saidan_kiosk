@@ -32,8 +32,8 @@ import {
   personMediaDoc,
   DISPLAY_NAME,
 } from "./firebase.js?v=13";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=50";
-import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=6";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=51";
+import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=7";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -1033,10 +1033,47 @@ function sortIcon(field) {
   return `<span class="sort-icon active">${sortDir === "asc" ? "↑" : "↓"}</span>`;
 }
 
+// ── Paging for the persons table ─────────────────────────────────────────────
+// Rows per page is one choice for the whole console, remembered per browser.
+// The current page is tracked per container and keyed to the exact set of
+// rows being shown, so sorting or paging keeps your place while a new filter
+// or a different family starts you back at page 1.
+const PAGE_SIZES = [20, 50, 100];
+const PAGE_SIZE_KEY = "ss_page_size";
+let pageSize = PAGE_SIZES.includes(Number(localStorage.getItem(PAGE_SIZE_KEY)))
+  ? Number(localStorage.getItem(PAGE_SIZE_KEY))
+  : PAGE_SIZES[0];
+const pageState = new WeakMap(); // container → { key, page }
+
+function setPageSize(n) {
+  pageSize = n;
+  try { localStorage.setItem(PAGE_SIZE_KEY, String(n)); } catch { /* private mode etc. */ }
+}
+
+function pagerHtml(from, to, total, page, pages) {
+  const options = PAGE_SIZES
+    .map((n) => `<option value="${n}"${n === pageSize ? " selected" : ""}>${n}</option>`)
+    .join("");
+  const nav = pages > 1 ? `
+      <div class="table-pager-nav">
+        <button type="button" class="btn-secondary" data-page="${page - 1}" ${page === 0 ? "disabled" : ""}>${esc(t("pg.prev"))}</button>
+        <span class="table-pager-page">${page + 1} / ${pages}</span>
+        <button type="button" class="btn-secondary" data-page="${page + 1}" ${page >= pages - 1 ? "disabled" : ""}>${esc(t("pg.next"))}</button>
+      </div>` : "";
+  return `
+    <div class="table-pager">
+      <label class="table-pager-size">${esc(t("pg.perPage"))}
+        <select data-page-size>${options}</select>
+      </label>
+      <span class="table-pager-range">${esc(t("pg.range", { from, to, total }))}</span>
+      ${nav}
+    </div>`;
+}
+
 /**
  * Render the full profiles table (avatar, name, year, section, row, actions)
- * into any container. Shared by the dashboard's "All Profiles" list and the
- * Family / Individual drill-down sections — same structure, different data pool.
+ * into any container. Shared by the Individuals tab, the family drill-down and
+ * the global search results — same structure, different data pool.
  *   container   — element to render into
  *   persons     — already-filtered rows to show
  *   actionPool  — list the QR/Edit/Delete buttons resolve their id against
@@ -1049,9 +1086,22 @@ function renderPersonsTable(container, persons, actionPool) {
     return;
   }
 
+  // Page position: kept across sort/page clicks on the same rows, reset when
+  // the rows change (new filter, another family, fresh data).
+  const key = persons.map((p) => p.id).join("\u0000");
+  let state = pageState.get(container);
+  if (!state || state.key !== key) { state = { key, page: 0 }; pageState.set(container, state); }
+
   const sorted = sortProfiles(persons);
+  const total = sorted.length;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  state.page = Math.min(Math.max(0, state.page), pages - 1);
+  const start = state.page * pageSize;
+  const slice = sorted.slice(start, start + pageSize);
+  const pager = pagerHtml(start + 1, start + slice.length, total, state.page, pages);
 
   container.innerHTML = `
+    ${pager}
     <div class="profiles-table-wrap">
       <table class="profiles-table">
         <thead>
@@ -1067,10 +1117,11 @@ function renderPersonsTable(container, persons, actionPool) {
           </tr>
         </thead>
         <tbody>
-          ${sorted.map((p) => profileRow(p, true)).join("")}
+          ${slice.map((p) => profileRow(p, true)).join("")}
         </tbody>
       </table>
-    </div>`;
+    </div>
+    ${pages > 1 ? pager : ""}`;
 
   // Sortable column headers — re-render this same container/pool on toggle.
   container.querySelectorAll("th.sortable").forEach((th) => {
@@ -1084,6 +1135,22 @@ function renderPersonsTable(container, persons, actionPool) {
         sortDir = "asc";
       }
       renderPersonsTable(container, persons, actionPool);
+    });
+  });
+
+  // Paging controls (top and, on multi-page lists, bottom too)
+  container.querySelectorAll("[data-page-size]").forEach((sel) => {
+    sel.addEventListener("change", () => {
+      setPageSize(Number(sel.value));
+      state.page = 0;
+      renderPersonsTable(container, persons, actionPool);
+    });
+  });
+  container.querySelectorAll("[data-page]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.page = Number(btn.dataset.page);
+      renderPersonsTable(container, persons, actionPool);
+      container.scrollIntoView({ block: "start", behavior: "smooth" });
     });
   });
 
