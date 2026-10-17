@@ -1433,7 +1433,8 @@ function renderBioSamples() {
 // document: the family is publicly readable for the kiosk, and a relative's
 // address, phone and email must not be. Only this site's staff can read or
 // write it (rules). The same fields appear on the "create a family" page
-// (prefix "nf") and on an existing family's page (prefix "fc"), so they are
+// (prefix "nfc" — not "nf", whose nfName is the family-name box) and on an
+// existing family's page (prefix "fc"), so they are
 // rendered from one template keyed by that prefix.
 const CONTACT_FIELDS = ["name", "kana", "relation", "note", "address", "phone", "email"];
 const CONTACT_RELATIONS = ["self", "spouse", "child", "grandchild", "other"];
@@ -1494,9 +1495,9 @@ async function saveContact(familyId, c) {
 function renderNfContact() {
   const wrap = document.getElementById("nfContact");
   if (!wrap) return;
-  const kept = wrap.children.length ? readContactForm("nf") : null;
-  wrap.innerHTML = contactFieldsHtml("nf");
-  if (kept) fillContactForm("nf", kept);
+  const kept = wrap.children.length ? readContactForm("nfc") : null;
+  wrap.innerHTML = contactFieldsHtml("nfc");
+  if (kept) fillContactForm("nfc", kept);
 }
 
 function readForm() {
@@ -1779,8 +1780,8 @@ async function saveFamilyBuilder() {
 
     // The family's contact (optional) goes to its private subdocument.
     try {
-      await saveContact(ref.id, readContactForm("nf"));
-      fillContactForm("nf", null);
+      await saveContact(ref.id, readContactForm("nfc"));
+      fillContactForm("nfc", null);
     } catch (e) {
       console.warn("[admin] contact save failed:", e);
       setStatus(t("status.contactFailed"), "error");
