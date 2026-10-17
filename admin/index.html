@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="css/style.css?v=10" />
-    <link rel="stylesheet" href="css/admin.css?v=35" />
+    <link rel="stylesheet" href="css/admin.css?v=36" />
   </head>
   <body>
     <div class="app-shell">
@@ -41,7 +41,13 @@
             </span>
             <span data-i18n="nav.usage">Usage</span>
           </button>
-          <!-- Super admins only — admin.js unhides this once it knows the role -->
+          <!-- Super admins only — admin.js unhides these once it knows the role -->
+          <button class="nav-item hidden" data-section="site" id="navSite">
+            <span class="nav-icon">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-5 2 2.5 3-4 3 6.5z" clip-rule="evenodd"/><circle cx="7" cy="7.5" r="1.5"/></svg>
+            </span>
+            <span data-i18n="nav.site">Site settings</span>
+          </button>
           <button class="nav-item hidden" data-section="staff" id="navStaff">
             <span class="nav-icon">
               <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a4 4 0 100 8 4 4 0 000-8zM3 16a7 7 0 0114 0v1a1 1 0 01-1 1H4a1 1 0 01-1-1v-1z"/><path d="M15.5 3.5a1 1 0 011 1V6h1.5a1 1 0 110 2h-1.5v1.5a1 1 0 11-2 0V8H13a1 1 0 110-2h1.5V4.5a1 1 0 011-1z"/></svg>
@@ -481,6 +487,71 @@
             </section>
           </section>
 
+          <!-- ══ SITE SETTINGS — super admins only (admin/js/site-settings.js) ══ -->
+          <section id="sec-site" class="section">
+            <div class="form-layout site-layout">
+
+              <div class="card">
+                <h3 class="card-title" data-i18n="site.bgTitle">Site background</h3>
+                <p class="field-hint" data-i18n="site.bgHint">Shown behind every kiosk screen at this site — welcome, search, family, slideshow and the end screen. JPG, PNG or WebP; landscape around 1920×1080 works best.</p>
+                <div class="site-bg-row">
+                  <div class="site-bg-preview" id="siteBgPreview"></div>
+                  <div class="site-bg-actions">
+                    <label class="btn-file"><input type="file" id="siteBgFile" accept="image/jpeg,image/png,image/webp" hidden /><span data-i18n="site.upload">Upload…</span></label>
+                    <button type="button" class="btn-danger" id="siteBgDelete" data-i18n="site.remove" disabled>Remove</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <h3 class="card-title" data-i18n="site.presetsTitle">Background presets for memorial pages</h3>
+                <p class="field-hint" data-i18n="site.presetsHint">Up to five images staff can pick for a person's memorial page. An empty slot shows the shared default for that slot.</p>
+                <div class="site-presets" id="sitePresets"></div>
+              </div>
+
+              <div class="card">
+                <h3 class="card-title" data-i18n="site.themeTitle">Theme &amp; welcome text</h3>
+                <div class="form-row">
+                  <div class="field">
+                    <label for="siteAccentHex" data-i18n="site.accent">Accent colour</label>
+                    <div class="site-color-row">
+                      <input id="siteAccent" type="color" value="#3a7d44" aria-label="Accent colour" />
+                      <input id="siteAccentHex" type="text" placeholder="#3A7D44" maxlength="7" autocomplete="off" />
+                    </div>
+                    <p class="field-hint" data-i18n="site.accentHint">Buttons and highlights on the kiosk. Leave empty for the default.</p>
+                  </div>
+                  <div class="field">
+                    <label for="siteFont" data-i18n="site.font">Font (Google Fonts name)</label>
+                    <input id="siteFont" type="text" placeholder="Shippori Mincho" autocomplete="off" />
+                    <p class="field-hint" data-i18n="site.fontHint">Must be a Google Fonts family name, spelled exactly. Leave empty for the default.</p>
+                  </div>
+                </div>
+
+                <h4 class="site-subtitle" data-i18n="site.stringsTitle">Welcome screen text</h4>
+                <p class="field-hint site-subhint" data-i18n="site.stringsHint">Leave a box empty to keep the default wording shown as the placeholder.</p>
+                <div class="field"><label for="siteStr_greetingMain" data-i18n="site.str.greetingMain">Heading</label><input id="siteStr_greetingMain" type="text" placeholder="ご来園ありがとうございます。" autocomplete="off" /></div>
+                <div class="field"><label for="siteStr_greetingSub" data-i18n="site.str.greetingSub">Sub-heading</label><input id="siteStr_greetingSub" type="text" placeholder="お名前を検索して墓誌をご覧ください" autocomplete="off" /></div>
+                <div class="form-row">
+                  <div class="field"><label for="siteStr_startBtn" data-i18n="site.str.startBtn">Search button</label><input id="siteStr_startBtn" type="text" placeholder="氏名で検索" autocomplete="off" /></div>
+                  <div class="field"><label for="siteStr_startHint" data-i18n="site.str.startHint">Note under the button</label><input id="siteStr_startHint" type="text" placeholder="納骨場所の番号もご確認いただけます" autocomplete="off" /></div>
+                </div>
+                <div class="field"><label for="siteStr_icNote" data-i18n="site.str.icNote">IC card note (line breaks are kept)</label><textarea id="siteStr_icNote" rows="2" placeholder="※ ICカードをお持ちの方は&#10;カードリーダーにかざしてください"></textarea></div>
+
+                <h4 class="site-subtitle" data-i18n="site.featuresTitle">Features</h4>
+                <p class="field-hint site-subhint" data-i18n="site.featuresHint">Switch a feature off to hide its buttons on this site's kiosk.</p>
+                <div class="radio-row">
+                  <label class="radio-option"><input type="checkbox" id="siteFeat_family" checked /><span data-i18n="site.feat.family">Family page</span></label>
+                  <label class="radio-option"><input type="checkbox" id="siteFeat_slideshow" checked /><span data-i18n="site.feat.slideshow">All-members slideshow</span></label>
+                </div>
+
+                <div class="form-actions">
+                  <button type="button" id="siteSaveBtn" data-i18n="site.save">Save settings</button>
+                </div>
+              </div>
+
+            </div>
+          </section>
+
           <!-- ══ STAFF — super admins only ══ -->
           <section id="sec-staff" class="section">
             <div class="form-layout staff-layout">
@@ -599,7 +670,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=86";
+      import { initAdminPortal } from "./js/admin.js?v=87";
       initAdminPortal();
     </script>
   </body>

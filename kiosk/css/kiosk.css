@@ -1027,6 +1027,13 @@ body.has-tenant-bg .f-member-years {
   transform: translateY(1px);
 }
 
+/* Feature switches from tenants/{id}.features, set on the admin's 施設設定
+   tab (tenant-bg.js writes them as data-feat-<key>="on|off" on <html>).
+   Only an explicit "off" hides anything: a site with no switches keeps every
+   button, so existing sites are untouched. */
+:root[data-feat-family="off"] .fc-btn-family { display: none; }
+:root[data-feat-slideshow="off"] .f-slideshow-btn { display: none; }
+
 .m-btn-back:hover,
 .m-btn-end:hover {
   background: #f2f2f2;

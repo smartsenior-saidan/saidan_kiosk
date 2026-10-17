@@ -34,9 +34,10 @@ import {
   personMediaDoc,
   DISPLAY_NAME,
 } from "./firebase.js?v=16";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=58";
-import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=14";
-import { initUsagePanel, openUsagePanel } from "./usage.js?v=7";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=59";
+import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=15";
+import { initUsagePanel, openUsagePanel } from "./usage.js?v=8";
+import { initSiteSettingsPanel, openSiteSettingsPanel } from "./site-settings.js?v=1";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -314,6 +315,7 @@ function showSection(name, opts = {}) {
   if (name === "dashboard") loadSearchData();
   if (name === "staff") openStaffPanel();
   if (name === "usage") openUsagePanel();
+  if (name === "site") openSiteSettingsPanel();
 
   // Give this section its own browser-history entry so Back/Forward moves
   // between in-app sections instead of leaving the app. Skipped when we're
@@ -2468,9 +2470,14 @@ export function initAdminPortal() {
   // Staff management is for super admins only. ROLE comes from sessionStorage,
   // so this only decides what the sidebar shows — firestore.rules is what
   // actually refuses a tampered session on every read and write.
-  if (ROLE === "super") document.getElementById("navStaff")?.classList.remove("hidden");
+  if (ROLE === "super") {
+    document.getElementById("navStaff")?.classList.remove("hidden");
+    document.getElementById("navSite")?.classList.remove("hidden");
+  }
   initStaffPanel({ esc, setStatus, confirmDialog });
   initUsagePanel({ esc, setStatus, kioskUrl });
+  // A changed preset should show up in the profile form's picker right away.
+  initSiteSettingsPanel({ esc, setStatus, confirmDialog, onPresetsChanged: loadBgPresets });
   renderBioSamples();
   renderNfContact();
 
