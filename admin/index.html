@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="css/style.css?v=10" />
-    <link rel="stylesheet" href="css/admin.css?v=34" />
+    <link rel="stylesheet" href="css/admin.css?v=35" />
   </head>
   <body>
     <div class="app-shell">
@@ -329,17 +329,27 @@
                 <h3 class="card-title" data-i18n="nf.title">Create a Family</h3>
                 <p class="field-hint" data-i18n="nf.hint">Give the family a name, then optionally add existing profiles to it. You can create the family now and add members later — an empty family is fine.</p>
 
-                <div class="field" style="margin-top:16px">
-                  <label for="nfName" data-i18n="nf.name">Family name</label>
-                  <input id="nfName" type="text" placeholder="e.g. 山田家" data-i18n-ph="nf.namePh" autocomplete="off" />
+                <!-- 1 ── Family name (required) -->
+                <div class="form-section nf-section" data-step="1">
+                  <h4 class="form-section-title">
+                    <span class="form-section-num">1</span>
+                    <span data-i18n="nf.sectionName">Family name (required)</span>
+                  </h4>
+                  <div class="field">
+                    <label for="nfName" data-i18n="nf.name">Family name *</label>
+                    <input id="nfName" type="text" placeholder="e.g. 山田家" data-i18n-ph="nf.namePh" autocomplete="off" required />
+                  </div>
                 </div>
 
-                <!-- Family contact (one per family). Saved to the family's PRIVATE
-                     subdocument, never anywhere the kiosk reads — see rules.
-                     Fields are rendered by admin.js contactFieldsHtml("nf"). -->
-                <div class="field family-contact-field">
-                  <label data-i18n="form.sectionContact">Family contact (optional)</label>
-                  <p class="field-hint" data-i18n="hint.contact">For the office only — never shown on the kiosk.</p>
+                <!-- 2 ── Family contact (optional). One per family, saved to the
+                     family's PRIVATE subdocument, never anywhere the kiosk reads —
+                     see rules. Fields are rendered by admin.js contactFieldsHtml("nf"). -->
+                <div class="form-section nf-section" data-step="2">
+                  <h4 class="form-section-title">
+                    <span class="form-section-num">2</span>
+                    <span data-i18n="form.sectionContact">Family contact (optional)</span>
+                  </h4>
+                  <p class="field-hint nf-section-hint" data-i18n="hint.contact">For the office only — never shown on the kiosk.</p>
                   <div id="nfContact"></div>
                 </div>
 
@@ -589,7 +599,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=85";
+      import { initAdminPortal } from "./js/admin.js?v=86";
       initAdminPortal();
     </script>
   </body>

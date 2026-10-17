@@ -1813,8 +1813,10 @@ tr[data-key]:hover .drill-chevron {
 
 /* ---- Family contact (create-family page + open family) ---------------------- */
 
-.family-contact-field { margin-top: 16px; }
-.family-contact-field > .field-hint { margin-bottom: 10px; }
+/* Create-family page: the two numbered sections sit under the card's intro
+   text, so the first one keeps its top rule (unlike the profile form). */
+.nf-section:first-of-type { border-top: 1px solid var(--color-border-soft); padding-top: 18px; margin-top: 16px; }
+.nf-section-hint { margin: -6px 0 12px; }
 .family-contact-card { margin-top: 16px; }
 .family-contact-card .card-title { margin-bottom: 4px; }
 .family-contact-card > .field-hint { margin-bottom: 12px; }
