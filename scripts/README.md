@@ -116,6 +116,12 @@ Check `reader.log` on the tablet:
   downloading it at first boot, with download as fallback; the flaky SYSTEM-
   context download was the #1 cause of tablets ending up with no NFC. pip now
   retries a slow/unreachable PyPI instead of failing the whole setup.
+- 1.4.1 — pip package versions **pinned** (`requests==2.34.2`,
+  `websocket-client==1.9.2`, `pyscard==2.3.1`, `ndeflib==0.3.3`,
+  `pynput==1.8.2`, `pyserial==3.5`). Before this, each tablet got whatever PyPI
+  served on its install day, so a breaking upstream release would have broken
+  only newly-provisioned tablets. To upgrade a package on purpose: change the
+  pin in `nfcsetup.ps1`, test on one tablet, then ship via Intune supersedence.
 
 ## kiosk-lockdown.ps1 / kiosk-lockdown-undo.ps1
 

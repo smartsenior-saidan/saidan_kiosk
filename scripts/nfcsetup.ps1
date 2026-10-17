@@ -361,9 +361,25 @@ if (-not (Test-Path $pythonExe)) {
 # needed). --retries/--timeout ride out a slow or briefly-unreachable PyPI at
 # first boot instead of failing the whole setup; honest detection (see
 # kiosk-launch-detect.ps1) re-runs this later anyway if a transient hiccup wins.
-Write-Log "Installing Python packages..."
+#
+# Versions are PINNED so every tablet gets the same, known-good set no matter
+# when it is installed. Unpinned, a tablet set up next year would pull whatever
+# PyPI serves that day, and a breaking release of e.g. pyscard would show up as
+# "new tablets have no NFC" with nothing changed on our side. To upgrade a
+# package deliberately: bump the pin here, test on one tablet, then ship via
+# Intune supersedence (see scripts/README.md). Pinned 2026-10-18; every pin has
+# a Python 3.11 / win_amd64 wheel.
+$pipPackages = @(
+    "requests==2.34.2",
+    "websocket-client==1.9.2",
+    "pyscard==2.3.1",
+    "ndeflib==0.3.3",
+    "pynput==1.8.2",
+    "pyserial==3.5"
+)
+Write-Log "Installing Python packages: $($pipPackages -join ', ')"
 $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + $env:PATH
-& $pipExe install --quiet --upgrade --disable-pip-version-check --retries 5 --timeout 30 requests websocket-client pyscard ndeflib pynput pyserial
+& $pipExe install --quiet --upgrade --disable-pip-version-check --retries 5 --timeout 30 @pipPackages
 Write-Log "Python packages installed"
 
 # 6. Ensure Smart Card service is running
