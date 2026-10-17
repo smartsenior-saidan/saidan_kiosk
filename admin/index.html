@@ -18,7 +18,8 @@
         <nav class="sidebar-nav">
           <button class="nav-item active" data-section="new-profile">
             <span class="nav-icon">
-              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+              <!-- One person, next to the family icon's three -->
+              <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 8a3 3 0 100-6 3 3 0 000 6zM3.465 14.493a1.23 1.23 0 00.41 1.412A9.957 9.957 0 0010 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.41a7.002 7.002 0 00-13.074.003z"/></svg>
             </span>
             <span data-i18n="nav.newProfile">New Profile</span>
           </button>
@@ -453,7 +454,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=76";
+      import { initAdminPortal } from "./js/admin.js?v=77";
       initAdminPortal();
     </script>
   </body>
