@@ -498,6 +498,8 @@ body.has-tenant-bg .f-member-years {
    ============================================================ */
 @media (max-width: 700px) {
   .keyboard-area { display: none !important; }
+  /* Outranks the base rule further down the file (same property, later). */
+  .search-body .search-idle-hint { display: none; }
 
   /* Left padding only has to clear the circular back button now. */
   .search-input-row {
@@ -579,9 +581,22 @@ body.has-tenant-bg .f-member-years {
   animation: results-slide-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Idle hint for the portrait kiosk only (see the portrait block at the end);
-   landscape has the keyboard beside the results, phones have the native IME. */
-.search-idle-hint { display: none; }
+/* Idle hint: fills the results slot (right of the keyboard in landscape,
+   above it in portrait) until a search has results; the sibling rule hides
+   it once the panel opens. Phones hide it outright (native IME, no slot). */
+.search-idle-hint {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 40px;
+  text-align: center;
+  font-size: clamp(1.7rem, 2.6vw, 2.4rem);
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+.search-results-panel.panel-open + .search-idle-hint { display: none; }
 
 /* ── Giant custom scrollbar ──
    A large, always-visible, draggable scrollbar for the results list — the
@@ -2209,22 +2224,11 @@ body.has-tenant-bg .f-member-years {
     order: 1;
   }
 
-  /* Before a search there is nothing above the keyboard, so say what to do.
-     Sits in the results slot; the sibling rule hides it once results open. */
+  /* The idle hint takes the results slot above the keyboard. */
   .search-idle-hint {
     order: 1;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0;
-    padding: 0 40px;
-    text-align: center;
     font-size: clamp(1.7rem, 3.1vw, 2.4rem);
-    letter-spacing: 0.06em;
-    color: var(--color-text-muted);
   }
-  .search-results-panel.panel-open + .search-idle-hint { display: none; }
 
   /* ── Profile: photo on top, vertical text beneath ──
      The three-column stage (dates | photo | name) turns into two rows.
