@@ -136,6 +136,13 @@ service cloud.firestore {
           allow read:  if true;                  // public kiosk
           allow write: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
         }
+
+        // Family contact (施主・ご遺族の連絡先): a relative's name, address,
+        // phone and email. Kept in a PRIVATE subdocument because the person
+        // itself is readable by the unauthenticated kiosk. Site staff only.
+        match /private/{docId} {
+          allow read, write: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
+        }
       }
 
       // A family holds at most 8 members: the kiosk family page fits two rows

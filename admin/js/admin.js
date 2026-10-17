@@ -9,12 +9,14 @@ import {
   doc,
   getDoc,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   getDocs,
   collection,
   personsCollection,
   personDoc,
+  personContactDoc,
   familiesCollection,
   familyDoc,
   withTenant,
@@ -31,10 +33,10 @@ import {
   personMediaCollection,
   personMediaDoc,
   DISPLAY_NAME,
-} from "./firebase.js?v=14";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=54";
-import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=10";
-import { initUsagePanel, openUsagePanel } from "./usage.js?v=3";
+} from "./firebase.js?v=15";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=55";
+import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=11";
+import { initUsagePanel, openUsagePanel } from "./usage.js?v=4";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -1348,6 +1350,48 @@ function showQrModal(person) {
 
 // ── Profile form ─────────────────────────────────────────────────────────────
 
+// ── Family contact (施主・ご遺族の連絡先) ────────────────────────────────────
+// Lives in individuals/{id}/private/contact, NOT on the person document: the
+// person is publicly readable for the kiosk, and a relative's address, phone
+// and email must not be. Only this site's staff can read or write it (rules).
+const CONTACT_FIELDS = ["name", "kana", "relation", "note", "address", "phone", "email"];
+
+function readContactForm() {
+  const get = (id) => (document.getElementById(id)?.value || "").trim();
+  return {
+    name: get("contactName"),
+    kana: get("contactKana"),
+    relation: document.querySelector('input[name="contactRelation"]:checked')?.value || "",
+    note: get("contactNote"),
+    address: get("contactAddress"),
+    phone: get("contactPhone"),
+    email: get("contactEmail"),
+  };
+}
+
+function fillContactForm(c) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ""; };
+  set("contactName", c?.name);
+  set("contactKana", c?.kana);
+  set("contactNote", c?.note);
+  set("contactAddress", c?.address);
+  set("contactPhone", c?.phone);
+  set("contactEmail", c?.email);
+  document.querySelectorAll('input[name="contactRelation"]').forEach((r) => {
+    r.checked = !!c && r.value === c.relation;
+  });
+}
+
+/** Save the contact for a person; an all-empty form removes the document. */
+async function saveContact(personId) {
+  const c = readContactForm();
+  if (CONTACT_FIELDS.some((k) => c[k])) {
+    await setDoc(personContactDoc(personId), { ...c, tenant_id: TENANT_ID, updated_at: serverTimestamp() });
+  } else {
+    try { await deleteDoc(personContactDoc(personId)); } catch (_) { /* nothing to remove */ }
+  }
+}
+
 function readForm() {
   const get = (id) => (document.getElementById(id)?.value || "").trim();
   const section = get("plotSection");
@@ -1837,6 +1881,13 @@ async function handleSave(e) {
       missing.push(e.message || String(e));
     }
 
+    try {
+      await saveContact(personId);
+    } catch (e) {
+      console.warn("[admin] contact save failed:", e);
+      missing.push(t("status.contactFailed"));
+    }
+
     // If a new cover is staged while an old one exists, queue the old one for deletion
     if (stagedCover && existingCover && !removedMediaIds.includes(existingCover.id)) {
       removedMediaIds.push(existingCover.id);
@@ -2006,6 +2057,16 @@ async function loadForEdit(person) {
     console.warn("[admin] loadForEdit media failed:", err);
   }
 
+  // Family contact (private subdocument) — cleared first so a profile without
+  // one never shows the previous profile's details.
+  fillContactForm(null);
+  try {
+    const cSnap = await getDoc(personContactDoc(person.id));
+    if (cSnap.exists()) fillContactForm(cSnap.data());
+  } catch (err) {
+    console.warn("[admin] loadForEdit contact failed:", err);
+  }
+
   const name = personName(person);
   const saveBtn = document.getElementById("saveBtn");
   if (saveBtn) saveBtn.textContent = t("btn.updateProfile");
@@ -2098,6 +2159,9 @@ async function deleteProfile(person) {
   } catch (linkErr) {
     console.warn("[admin] family link cleanup skipped:", linkErr.message);
   }
+
+  // The private contact subdocument is not removed with its parent.
+  try { await deleteDoc(personContactDoc(person.id)); } catch (_) { /* none, or already gone */ }
 
   // Always delete the person document.
   try {

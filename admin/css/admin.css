@@ -1777,6 +1777,34 @@ tr[data-key]:hover .drill-chevron {
   accent-color: var(--color-accent);
 }
 
+/* ---- Family contact (profile form §5) --------------------------------------- */
+
+.contact-hint { margin: -6px 0 12px; }
+
+.radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 6px;
+}
+
+.radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.radio-option input[type="radio"] {
+  width: auto;
+  min-height: unset;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
 .staff-actions {
   position: static;
   margin: 14px 0 0;
