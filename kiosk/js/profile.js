@@ -6,7 +6,7 @@ import {
   getPersonById,
   personMediaCollection,
 } from "./firebase.js?v=2";
-import { logAccess } from "./access-log.js?v=1";
+import { logAccess } from "./access-log.js?v=3";
 
 const ADVANCE_MS = 6000;
 

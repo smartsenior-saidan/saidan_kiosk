@@ -180,6 +180,7 @@
         personMediaCollection,
       } from "./js/firebase.js?v=2";
       import { applyTenantBackground } from "./js/tenant-bg.js?v=2";
+      import { logAccess } from "./js/access-log.js?v=3";
 
       // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -497,6 +498,7 @@
               showError('記録が見つかりませんでした。');
               return;
             }
+            logAccess(root, 'slideshow');
 
             const allIds   = [root.id, ...(root.related_persons || [])];
             const snaps    = await Promise.all(allIds.map(id => getDoc(personDoc(id))));

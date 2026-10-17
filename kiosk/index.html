@@ -139,6 +139,7 @@
 
     <script type="module">
       import { initSearchScreen } from "./js/search.js?v=3";
+      import { endVisit } from "./js/access-log.js?v=3";
       import { applyTenantBackground } from "./js/tenant-bg.js?v=2";
       import { initNetStatus } from "./js/net-status.js?v=1";
 
@@ -524,10 +525,13 @@
       // Page is invisible (bg-loading opacity:0) until this resolves.
       applyTenantBackground();
 
-      // Restore search screen if coming back from family/profile page
-      if (
-        new URLSearchParams(window.location.search).get("restore") === "search"
-      ) {
+      // Restore search screen if coming back from family/profile page.
+      // Otherwise this is the welcome screen: whoever touches the kiosk next
+      // is a new visitor, so close the previous visit for the access log.
+      const restoring =
+        new URLSearchParams(window.location.search).get("restore") === "search";
+      if (!restoring) endVisit();
+      if (restoring) {
         showSearch();
         const lastQuery = sessionStorage.getItem("kiosk_last_query");
         if (lastQuery) {

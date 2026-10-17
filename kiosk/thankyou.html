@@ -166,6 +166,10 @@
 
     <script type="module">
       import { applyTenantBackground } from "./js/tenant-bg.js?v=2";
+      import { endVisit } from "./js/access-log.js?v=3";
+
+      // 参拝終了: this visitor is done, the next touch is a new visitor.
+      endVisit();
 
       // Countdown
       const TOTAL   = 10;

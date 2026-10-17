@@ -353,22 +353,23 @@
           <section id="sec-usage" class="section">
             <div class="usage-toolbar">
               <span class="usage-label" data-i18n="us.period">Period:</span>
-              <button type="button" class="us-pill on" data-days="30" data-i18n="us.d30">30 days</button>
+              <button type="button" class="us-pill" data-days="30" data-i18n="us.d30">30 days</button>
               <button type="button" class="us-pill" data-days="90" data-i18n="us.d90">90 days</button>
-              <button type="button" class="us-pill" data-days="365" data-i18n="us.d365">1 year</button>
+              <button type="button" class="us-pill on" data-days="365" data-i18n="us.d365">1 year</button>
               <button type="button" class="us-pill" data-days="0" data-i18n="us.all">All time</button>
               <span class="usage-label usage-label-gap" data-i18n="us.entry">Entry:</span>
               <button type="button" class="us-pill on" data-entry="all" data-i18n="us.entryAll">All</button>
               <button type="button" class="us-pill" data-entry="search" data-i18n="us.entrySearch">From search</button>
-              <button type="button" class="us-pill" data-entry="link" data-i18n="us.entryLink">QR / link</button>
+              <button type="button" class="us-pill" data-entry="link" data-i18n="us.entryLink">From card</button>
               <button type="button" class="btn-secondary usage-reload" id="usReload" data-i18n="us.reload">↻ Reload</button>
             </div>
             <p class="usage-since" id="usSince"></p>
 
             <div class="usage-tiles">
               <button type="button" class="us-tile" data-list="total">
-                <span class="tile-label"><span data-i18n="us.tileTotal">Views</span> <span class="tile-more" data-i18n="us.detail">▶ details</span></span>
+                <span class="tile-label"><span data-i18n="us.tileTotal">Visitors</span> <span class="tile-more" data-i18n="us.detail">▶ details</span></span>
                 <span class="tile-value" id="usTileTotal">-</span>
+                <span class="tile-sub" data-i18n="us.tileTotalSub">One use of the kiosk, however many screens were opened</span>
               </button>
               <button type="button" class="us-tile" data-list="fams">
                 <span class="tile-label"><span data-i18n="us.tileFams">Families viewed</span> <span class="tile-more" data-i18n="us.detail">▶ details</span></span>
@@ -378,7 +379,7 @@
               <button type="button" class="us-tile" data-list="repeat">
                 <span class="tile-label"><span data-i18n="us.tileRepeat">Returning devices</span> <span class="tile-more" data-i18n="us.detail">▶ details</span></span>
                 <span class="tile-value" id="usTileRepeat">-</span>
-                <span class="tile-sub" data-i18n="us.tileRepeatSub">Devices that opened a memorial 2+ times in the period</span>
+                <span class="tile-sub" data-i18n="us.tileRepeatSub">Devices with 2+ visits in the period</span>
               </button>
               <button type="button" class="us-tile" data-list="risk">
                 <span class="tile-label"><span data-i18n="us.tileRisk">Low usage (risk)</span> <span class="tile-more" data-i18n="us.detail">▶ details</span></span>
@@ -426,9 +427,10 @@
                 <table class="profiles-table usage-table">
                   <thead><tr>
                     <th data-i18n="us.colFamily">Family</th>
-                    <th class="num" data-i18n="us.colViews">Views</th>
-                    <th class="num" data-i18n="us.colSplit">Search / QR</th>
+                    <th class="num" data-i18n="us.colViews">Visitors</th>
+                    <th class="num" data-i18n="us.colSplit">Search / Card</th>
                     <th class="num" data-i18n="us.colDevs">Devices</th>
+                    <th data-i18n="us.colScreens">Screens opened</th>
                     <th data-i18n="us.colLast">Last viewed</th>
                     <th data-i18n="us.colFreq">Usage</th>
                     <th data-i18n="us.colReason">Reason</th>
@@ -586,7 +588,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=80";
+      import { initAdminPortal } from "./js/admin.js?v=82";
       initAdminPortal();
     </script>
   </body>

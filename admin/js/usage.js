@@ -1,11 +1,14 @@
-// usage.js — 利用状況 tab: how often each family's memorial is opened.
+// usage.js — 利用状況 tab: how many visitors open each family's memorial.
 //
-// Ported from rem-multi's usage.html. The data is tenants/{tid}/access_logs,
-// one document per memorial page view written anonymously by the kiosk (see
-// kiosk/js/access-log.js). Here each log is attributed to a FAMILY record
-// through its member list; a person who belongs to no family record counts as
-// a row of their own. Everything is aggregated on the client — the whole log
-// is read once (paged, newest first) and the filters just slice it.
+// Ported from rem-multi's usage.html, then re-centred on VISITS. The data is
+// tenants/{tid}/access_logs, one document per memorial page view written
+// anonymously by the kiosk (see kiosk/js/access-log.js). Each log carries a
+// `visit` id — one use of the kiosk, from the welcome screen (or a direct
+// QR / NFC open) until 参拝終了 — so a visitor who opens a family, two
+// memorials and the slideshow counts once. Logs are attributed to a FAMILY
+// record through its member list; a person who belongs to no family record
+// counts as a row of their own. Everything is aggregated on the client — the
+// whole log is read once (paged, newest first) and the filters slice it.
 //
 // Usage level is simpler than rem-multi's, because this system holds no fee
 // or contact data: 高 = viewed within a year, 中 = last view older than a
@@ -23,7 +26,7 @@ import {
   familiesCollection,
   TENANT_ID,
 } from "./firebase.js?v=14";
-import { t } from "./i18n.js?v=52";
+import { t } from "./i18n.js?v=54";
 
 // Helpers handed in by admin.js so this module shares its escaper, toast and
 // kiosk-link builder instead of growing its own.
@@ -35,10 +38,10 @@ let kioskUrl = () => "";
 
 let entities = {};    // key → { key, label, kind: "family"|"individual", firstMember, missing? }
 let personKey = {};   // person id → entity key
-let logs = [];        // every access log, newest first; each gets ._key
+let logs = [];        // every access log, newest first; each gets ._key and ._visit
 let lastAllMap = {};  // entity key → latest view date (all time)
 let tableRows = [];   // what the family table currently shows (for CSV)
-let periodDays = 30;
+let periodDays = 365;
 let entryFilter = "all";
 let riskFilter = "all";
 let selectedKey = "";
@@ -51,6 +54,7 @@ const MAX_PAGES = 10;
 const WD = ["日", "月", "火", "水", "木", "金", "土"];
 const PALETTE = ["#4f46e5", "#0891b2", "#059669", "#d97706", "#dc2626", "#7c3aed",
                  "#db2777", "#65a30d", "#0284c7", "#ea580c", "#9333ea", "#16a34a"];
+const PAGES = ["family", "profile", "slideshow"];
 
 const $ = (id) => document.getElementById(id);
 const qa = (sel) => document.querySelectorAll(sel);
@@ -71,7 +75,10 @@ function fmtAt(iso) {
   } catch (_) { return iso || ""; }
 }
 const keyOf = (l) => l._key;
+const visitOf = (l) => l._visit;
 const ymOf = (l) => l.ym || (l.date || "").slice(0, 7);
+const pageLabel = (page) => t(page === "family" ? "us.pageFamily" : page === "slideshow" ? "us.pageSlideshow" : "us.pageProfile");
+const entryLabel = (entry) => (entry === "link" ? `<span class="usage-link-entry">${esc(t("us.entryLinkShort"))}</span>` : esc(t("us.entrySearchShort")));
 
 // ── Data ────────────────────────────────────────────────────────────────────
 
@@ -115,6 +122,8 @@ async function loadData() {
   logs.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
   for (const l of logs) {
     l._key = personKey[l.person_id] || ("p:" + l.person_id);
+    // Logs written before visits existed: treat each device-hour as a visit.
+    l._visit = l.visit || `legacy:${l.dev}:${(l.at || "").slice(0, 13)}`;
     // A log for a profile that has since been deleted still counts — show it
     // under the name the kiosk recorded at the time.
     if (!entities[l._key]) {
@@ -125,6 +134,23 @@ async function loadData() {
   const oldest = logs.length ? logs[logs.length - 1].date : "";
   $("usSince").textContent = oldest ? t("us.sinceLabel", { date: oldest }) : t("us.noLogs");
   loaded = true;
+}
+
+// ── Visits ──────────────────────────────────────────────────────────────────
+
+/** Group logs (newest first) into visits. Each visit keeps its first log —
+ *  the moment the visitor started — which is what the charts count. */
+function visitsOf(ls) {
+  const map = new Map();
+  for (const l of ls) {
+    let v = map.get(visitOf(l));
+    if (!v) { v = { id: visitOf(l), logs: [], keys: new Set(), entry: l.entry, dev: l.dev, first: l, last: l }; map.set(v.id, v); }
+    v.logs.push(l);
+    v.keys.add(keyOf(l));
+    if ((l.at || "") < (v.first.at || "")) v.first = l;
+    if ((l.at || "") > (v.last.at || "")) v.last = l;
+  }
+  return [...map.values()];
 }
 
 // ── Usage level / last-view status ──────────────────────────────────────────
@@ -170,9 +196,10 @@ function heatColor(v, max) {
   return `hsl(${hue}, 90%, ${light}%)`;
 }
 
-function heatmap(table, ls) {
+/** Heatmap of visit STARTS by weekday × hour. */
+function heatmap(table, visits) {
   const grid = Array.from({ length: 7 }, () => Array(24).fill(0));
-  ls.forEach((l) => { if (l.w >= 0 && l.w < 7 && l.h >= 0 && l.h < 24) grid[l.w][l.h]++; });
+  visits.forEach((v) => { const l = v.first; if (l.w >= 0 && l.w < 7 && l.h >= 0 && l.h < 24) grid[l.w][l.h]++; });
   const gmax = Math.max(1, ...grid.flat());
   let html = '<tr><td class="hdr"></td>' + Array.from({ length: 24 }, (_, h) => `<td class="hdr">${h}</td>`).join("") + "</tr>";
   for (let w = 0; w < 7; w++) {
@@ -203,19 +230,34 @@ function monthAxis() {
   return lastMonths(n);
 }
 
+/** Monthly bars of visit starts, plus the heatmap, into the given elements. */
+function drawCharts(visits, barsEl, labelsEl, heatEl) {
+  const months = monthAxis();
+  bars(barsEl, months.map((m) => visits.filter((v) => ymOf(v.first) === m).length), labelsEl, months.map((m) => m.slice(2).replace("-", "/")));
+  heatmap(heatEl, visits);
+}
+
+/** "家系図 3・墓誌 5・全員スライド 1" for a set of logs. */
+function screensText(ls) {
+  const counts = {};
+  ls.forEach((l) => { counts[l.page] = (counts[l.page] || 0) + 1; });
+  return PAGES.filter((p) => counts[p]).map((p) => `${pageLabel(p)} ${counts[p]}`).join("・") || "—";
+}
+
 function renderAll() {
   const ls = filteredLogs();
+  const visits = visitsOf(ls);
   lastAllMap = {};
   logs.forEach((l) => { const k = keyOf(l); if (!lastAllMap[k] || (l.date || "") > lastAllMap[k]) lastAllMap[k] = l.date || ""; });
 
-  $("usTileTotal").textContent = ls.length.toLocaleString();
+  $("usTileTotal").textContent = visits.length.toLocaleString();
   const famSet = new Set(ls.map(keyOf));
   const registered = Object.values(entities).filter((e) => !e.missing).length;
   $("usTileFams").textContent = famSet.size.toLocaleString();
   $("usTileFamsSub").textContent = t("us.tileFamsSub", { n: registered });
-  const devCount = {};
-  ls.forEach((l) => { devCount[l.dev] = (devCount[l.dev] || 0) + 1; });
-  $("usTileRepeat").textContent = Object.values(devCount).filter((c) => c >= 2).length.toLocaleString();
+  const devVisits = {};
+  visits.forEach((v) => { devVisits[v.dev] = (devVisits[v.dev] || 0) + 1; });
+  $("usTileRepeat").textContent = Object.values(devVisits).filter((c) => c >= 2).length.toLocaleString();
   const allRows = buildRows(ls, true);
   $("usTileRisk").textContent = allRows.filter((r) => r.risk.level === 2).length.toLocaleString();
   $("usTileRiskSub").textContent = t("us.tileRiskSub", {
@@ -223,9 +265,7 @@ function renderAll() {
     high: allRows.filter((r) => r.risk.level === 0).length,
   });
 
-  const months = monthAxis();
-  bars($("usChartMonth"), months.map((m) => ls.filter((l) => ymOf(l) === m).length), $("usChartMonthLbl"), months.map((m) => m.slice(2).replace("-", "/")));
-  heatmap($("usHeatmap"), ls);
+  drawCharts(visits, $("usChartMonth"), $("usChartMonthLbl"), $("usHeatmap"));
 
   renderTable(ls);
   if (selectedKey) renderDetail(selectedKey);
@@ -233,22 +273,26 @@ function renderAll() {
 }
 
 function buildRows(ls, ignoreFilters) {
+  // Per family: distinct visits (split by entry), devices, and which screens.
   const agg = {};
   ls.forEach((l) => {
     const k = keyOf(l);
-    const a = agg[k] || (agg[k] = { count: 0, search: 0, link: 0, devs: new Set() });
-    a.count++;
-    if (l.entry === "link") a.link++; else a.search++;
+    const a = agg[k] || (agg[k] = { visits: new Set(), search: new Set(), link: new Set(), devs: new Set(), logs: [] });
+    a.visits.add(visitOf(l));
+    (l.entry === "link" ? a.link : a.search).add(visitOf(l));
     a.devs.add(l.dev);
+    a.logs.push(l);
   });
   const q = ($("usFamFilter").value || "").replace(/[\s　]+/g, "").toLowerCase();
   const onlyViewed = $("usOnlyViewed").checked;
   return Object.values(entities)
     .filter((e) => !e.missing || agg[e.key])
     .map((e) => {
-      const a = agg[e.key] || { count: 0, search: 0, link: 0, devs: new Set() };
+      const a = agg[e.key] || { visits: new Set(), search: new Set(), link: new Set(), devs: new Set(), logs: [] };
       return {
-        key: e.key, label: e.label, kind: e.kind, count: a.count, search: a.search, link: a.link, devs: a.devs.size,
+        key: e.key, label: e.label, kind: e.kind,
+        count: a.visits.size, search: a.search.size, link: a.link.size, devs: a.devs.size,
+        screens: screensText(a.logs),
         last: lastAllMap[e.key] || "", st: statusOf(lastAllMap[e.key] || ""), risk: riskOf(e),
       };
     })
@@ -266,20 +310,19 @@ function renderTable(ls) {
       <td class="num"><strong>${r.count}</strong></td>
       <td class="num">${r.search} / ${r.link}</td>
       <td class="num">${r.devs}</td>
+      <td class="usage-muted nowrap">${esc(r.screens)}</td>
       <td title="${esc(r.st.text)}">${r.st.icon} <span class="usage-muted">${esc(r.last || "—")}</span></td>
       <td>${r.risk.icon} ${esc(r.risk.text)}</td>
       <td class="usage-muted">${esc(r.risk.reasons.join("・")) || "—"}</td>
-    </tr>`).join("") || `<tr><td colspan="7" class="empty-state">${esc(t("us.noFamilies"))}</td></tr>`;
+    </tr>`).join("") || `<tr><td colspan="8" class="empty-state">${esc(t("us.noFamilies"))}</td></tr>`;
 }
 
 // ── Tile detail lists ───────────────────────────────────────────────────────
 
-const pageLabel = (l) => (l.page === "family" ? t("us.pageFamily") : t("us.pageProfile"));
-const entryLabel = (l) => (l.entry === "link" ? `<span class="usage-link-entry">${esc(t("us.entryLinkShort"))}</span>` : esc(t("us.entrySearchShort")));
-
 function renderList(mode) {
   listMode = mode;
   const ls = filteredLogs();
+  const visits = visitsOf(ls);
   qa(".us-tile").forEach((tl) => tl.classList.toggle("on", tl.dataset.list === mode));
   $("usListPanel").classList.remove("hidden");
   const th = (cols) => "<tr>" + cols.map((c) => `<th>${esc(c)}</th>`).join("") + "</tr>";
@@ -288,34 +331,38 @@ function renderList(mode) {
   let rows = "";
 
   if (mode === "total") {
-    $("usLpTitle").textContent = t("us.lpTotal", { n: ls.length });
-    $("usLpHead").innerHTML = th([t("us.colWhen"), t("us.colFamily"), t("us.colPage"), t("us.colEntry"), t("us.colDev")]);
-    rows = ls.slice(0, 500).map((l) => `<tr>
-      <td class="nowrap">${esc(fmtAt(l.at))}</td>
-      <td>${famLink(keyOf(l), labelOf(keyOf(l)))}</td>
-      <td>${esc(l.name || "")} <span class="usage-muted">${esc(pageLabel(l))}</span></td>
-      <td>${entryLabel(l)}</td>
-      <td class="usage-mono">${esc(String(l.dev || "").slice(0, 6))}</td></tr>`).join("");
+    // One row per visitor: when they started, how they came in, what they saw.
+    const list = visits.sort((a, b) => (b.first.at || "").localeCompare(a.first.at || ""));
+    $("usLpTitle").textContent = t("us.lpTotal", { n: list.length });
+    $("usLpHead").innerHTML = th([t("us.colStart"), t("us.colEntry"), t("us.colFamsSeen"), t("us.colScreens"), t("us.colDev")]);
+    rows = list.slice(0, 500).map((v) => `<tr>
+      <td class="nowrap">${esc(fmtAt(v.first.at))}</td>
+      <td>${entryLabel(v.entry)}</td>
+      <td>${[...v.keys].map((k) => famLink(k, labelOf(k))).join("、")}</td>
+      <td class="usage-muted nowrap">${esc(screensText(v.logs))}</td>
+      <td class="usage-mono">${esc(String(v.dev || "").slice(0, 6))}</td></tr>`).join("");
   } else if (mode === "fams") {
     const agg = {};
     ls.forEach((l) => {
       const k = keyOf(l);
-      const a = agg[k] || (agg[k] = { n: 0, link: 0, last: "", devs: new Set() });
-      a.n++; if (l.entry === "link") a.link++; if ((l.at || "") > a.last) a.last = l.at; a.devs.add(l.dev);
+      const a = agg[k] || (agg[k] = { visits: new Set(), link: new Set(), last: "", devs: new Set(), logs: [] });
+      a.visits.add(visitOf(l)); if (l.entry === "link") a.link.add(visitOf(l));
+      if ((l.at || "") > a.last) a.last = l.at; a.devs.add(l.dev); a.logs.push(l);
     });
-    const list = Object.entries(agg).sort((a, b) => b[1].n - a[1].n);
+    const list = Object.entries(agg).sort((a, b) => b[1].visits.size - a[1].visits.size);
     $("usLpTitle").textContent = t("us.lpFams", { n: list.length });
-    $("usLpHead").innerHTML = th([t("us.colFamily"), t("us.colViews"), t("us.colLinkViews"), t("us.colDevs"), t("us.colLast"), t("us.colFreq")]);
+    $("usLpHead").innerHTML = th([t("us.colFamily"), t("us.colViews"), t("us.colLinkViews"), t("us.colDevs"), t("us.colScreens"), t("us.colLast"), t("us.colFreq")]);
     rows = list.map(([k, a]) => `<tr>
-      <td>${famLink(k, labelOf(k))}</td><td class="num">${a.n}</td><td class="num">${a.link}</td><td class="num">${a.devs.size}</td>
+      <td>${famLink(k, labelOf(k))}</td><td class="num">${a.visits.size}</td><td class="num">${a.link.size}</td><td class="num">${a.devs.size}</td>
+      <td class="usage-muted nowrap">${esc(screensText(a.logs))}</td>
       <td class="nowrap">${esc(fmtAt(a.last))}</td><td>${entities[k] ? riskOf(entities[k]).icon + " " + esc(riskOf(entities[k]).text) : ""}</td></tr>`).join("");
   } else if (mode === "repeat") {
     const dv = {};
-    ls.forEach((l) => {
-      const d = dv[l.dev] || (dv[l.dev] = { n: 0, fams: new Set(), first: l.at, last: l.at });
-      d.n++; d.fams.add(keyOf(l));
-      if ((l.at || "") < d.first) d.first = l.at;
-      if ((l.at || "") > d.last) d.last = l.at;
+    visits.forEach((v) => {
+      const d = dv[v.dev] || (dv[v.dev] = { n: 0, fams: new Set(), first: v.first.at, last: v.last.at });
+      d.n++; v.keys.forEach((k) => d.fams.add(k));
+      if ((v.first.at || "") < d.first) d.first = v.first.at;
+      if ((v.last.at || "") > d.last) d.last = v.last.at;
     });
     const list = Object.entries(dv).filter(([, d]) => d.n >= 2).sort((a, b) => b[1].n - a[1].n);
     $("usLpTitle").textContent = t("us.lpRepeat", { n: list.length });
@@ -332,7 +379,7 @@ function renderList(mode) {
       <td>${famLink(r.key, r.label)}</td><td class="usage-danger">${esc(r.risk.reasons.join("・"))}</td>
       <td>${r.st.icon} ${esc(r.last || t("us.noRecord"))}</td><td class="num">${r.count}</td></tr>`).join("");
   }
-  $("usLpRows").innerHTML = rows || `<tr><td colspan="6" class="empty-state">${esc(t("us.none"))}</td></tr>`;
+  $("usLpRows").innerHTML = rows || `<tr><td colspan="7" class="empty-state">${esc(t("us.none"))}</td></tr>`;
   $("usListPanel").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -350,20 +397,20 @@ function renderDetail(key) {
   selectedKey = key;
   const ls = filteredLogs().filter((l) => keyOf(l) === key);
   const all = logs.filter((l) => keyOf(l) === key);
+  const visits = visitsOf(ls);
   $("usDetail").classList.remove("hidden");
   $("usDTitle").textContent = e.label;
-  $("usDSub").textContent = t("us.inPeriod", { n: ls.length, all: all.length }) + (all.length ? "　" + t("us.lastViewed", { at: fmtAt(all[0].at) }) : "");
+  $("usDSub").textContent = t("us.inPeriod", { n: visits.length, all: visitsOf(all).length })
+    + (all.length ? "　" + t("us.lastViewed", { at: fmtAt(all[0].at) }) : "");
   const r = riskOf(e);
   $("usDRisk").innerHTML = `${esc(t("us.freqLabel"))} <strong>${r.icon} ${esc(r.text)}</strong>`
     + (r.reasons.length ? `　<span class="usage-danger">${esc(r.reasons.join("・"))}</span>` : `　<span class="usage-muted">${esc(t("us.noReason"))}</span>`);
-  const months = monthAxis();
-  bars($("usDMonth"), months.map((m) => ls.filter((l) => ymOf(l) === m).length), $("usDMonthLbl"), months.map((m) => m.slice(2).replace("-", "/")));
-  heatmap($("usDHeat"), ls);
+  drawCharts(visits, $("usDMonth"), $("usDMonthLbl"), $("usDHeat"));
   $("usDRows").innerHTML = ls.slice(0, 100).map((l) => `
     <tr>
       <td class="nowrap">${esc(fmtAt(l.at))}</td>
-      <td>${esc(l.name || "")} <span class="usage-muted">${esc(pageLabel(l))}</span></td>
-      <td>${entryLabel(l)}</td>
+      <td>${esc(pageLabel(l.page))} <span class="usage-muted">${esc(l.name || "")}</span></td>
+      <td>${entryLabel(l.entry)}</td>
       <td class="usage-mono">${esc(String(l.dev || "").slice(0, 6))}</td>
     </tr>`).join("") || `<tr><td colspan="4" class="empty-state">${esc(t("us.noViews"))}</td></tr>`;
   $("usCopyLink").disabled = !e.firstMember;
@@ -395,10 +442,10 @@ async function copyLink() {
 
 function downloadCsv() {
   const head = [t("us.colFamily"), t("us.colKind"), t("us.colViews"), t("us.entrySearch"), t("us.entryLink"),
-                t("us.colDevs"), t("us.colLast"), t("us.colFreq"), t("us.colReason")];
+                t("us.colDevs"), t("us.colScreens"), t("us.colLast"), t("us.colFreq"), t("us.colReason")];
   const rows = tableRows.map((r) => [
     r.label, r.kind === "family" ? t("us.kindFamily") : t("us.individual"), r.count, r.search, r.link, r.devs,
-    r.last || t("us.noRecord"), r.risk.text, r.risk.reasons.join("・"),
+    r.screens, r.last || t("us.noRecord"), r.risk.text, r.risk.reasons.join("・"),
   ]);
   const csv = "﻿" + [head, ...rows].map((cols) => cols.map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(",")).join("\r\n");
   const a = document.createElement("a");

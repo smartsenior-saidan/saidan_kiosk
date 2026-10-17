@@ -32,9 +32,9 @@ import {
   personMediaDoc,
   DISPLAY_NAME,
 } from "./firebase.js?v=14";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=52";
-import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=8";
-import { initUsagePanel, openUsagePanel } from "./usage.js?v=1";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=54";
+import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=10";
+import { initUsagePanel, openUsagePanel } from "./usage.js?v=3";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
