@@ -222,14 +222,16 @@ function readingKey(p) {
 }
 
 /**
- * Fuzzy-search the tenant's persons.
+ * Fuzzy-search the tenant's persons. Every match is returned — the list
+ * scrolls — so a common surname never hides anyone; `opts.maxResults` can
+ * still cap it for callers that want a short list.
  * @param {string} queryText raw user input
- * @param {object} [opts] { maxResults = 12 }
+ * @param {object} [opts] { maxResults = Infinity }
  * @returns {Promise<Array>} matched person objects (each with a `_score`),
  *   displayed in あいうえお order.
  */
 export async function searchPersons(queryText, opts = {}) {
-  const { maxResults = 12 } = opts;
+  const { maxResults = Infinity } = opts;
   const qFull = normalize(queryText);
 
   if (!qFull) return [];
@@ -237,16 +239,14 @@ export async function searchPersons(queryText, opts = {}) {
   const qTokens = qFull.split(" ").filter(Boolean);
   const persons = await loadPersons();
 
-  // Pick the most relevant matches by score first (so the closest names are
-  // never dropped when there are many hits)…
   const matches = persons
     .map((p) => ({ ...p, _score: scorePerson(p, qTokens, qFull) }))
     .filter((p) => p._score > 1.2) // drop weak/no matches
     .sort((a, b) => b._score - a._score)
     .slice(0, maxResults);
 
-  // …then present that set in あいうえお (kana reading) order, as requested,
-  // rather than by relevance.
+  // Present the matches in あいうえお (kana reading) order rather than by
+  // relevance, as requested.
   matches.sort((a, b) => readingKey(a).localeCompare(readingKey(b), "ja"));
   return matches;
 }

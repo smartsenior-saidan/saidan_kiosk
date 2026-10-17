@@ -576,6 +576,10 @@ body.has-tenant-bg .f-member-years {
   animation: results-slide-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Idle hint for the portrait kiosk only (see the portrait block at the end);
+   landscape has the keyboard beside the results, phones have the native IME. */
+.search-idle-hint { display: none; }
+
 /* ── Giant custom scrollbar ──
    A large, always-visible, draggable scrollbar for the results list — the
    native one is a thin overlay that's invisible at rest on iOS/macOS, so this
@@ -2160,6 +2164,34 @@ body.has-tenant-bg .f-member-years {
    ============================================================ */
 @media (orientation: portrait) and (min-width: 701px) {
 
+  /* ── Search: results in a centred column, hint while idle ──
+     The generic portrait rule stretches the results to the full width,
+     which at 900px+ makes every card a wide, flat strip. Cap the column
+     near the landscape card width and centre it; the custom scrollbar
+     follows the panel's right edge, so it moves with it. */
+  .search-results-panel {
+    width: min(100%, 660px) !important;
+    align-self: center;
+    order: 1;
+  }
+
+  /* Before a search there is nothing above the keyboard, so say what to do.
+     Sits in the results slot; the sibling rule hides it once results open. */
+  .search-idle-hint {
+    order: 1;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0 40px;
+    text-align: center;
+    font-size: clamp(1.4rem, 2.6vw, 2rem);
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+  }
+  .search-results-panel.panel-open + .search-idle-hint { display: none; }
+
   /* ── Profile: photo on top, vertical text beneath ──
      The three-column stage (dates | photo | name) turns into two rows.
      Row 1 is the photo; row 2 keeps the kiosk's vertical Japanese with
@@ -2197,22 +2229,23 @@ body.has-tenant-bg .f-member-years {
   }
 
   .m-photo {
-    width: clamp(260px, min(58vw, 36vh), 560px);
+    width: clamp(234px, min(52vw, 32.4vh), 504px);
     aspect-ratio: 1 / 1;
   }
 
+  /* Both text groups sit centred against each other on their line, so the
+     name and kaimyo float at the middle of the taller dates column. */
   .m-side {
     flex: 0 0 auto;
-    align-self: flex-start;
+    align-self: center;
     padding: 0;
   }
 
-  /* Top edges line up across both text groups. */
-  .m-name-group,
-  .m-info-group {
-    align-items: flex-start;
-  }
-  .lang-ja .m-info-group > #pAgeBlock { align-self: flex-start; }
+  /* Name and kaimyo: centred on each other. Birth/death: tops aligned.
+     Age: centred on its own (same arrangement as beside the photo). */
+  .m-name-group { align-items: center; }
+  .m-info-group { align-items: flex-start; }
+  .lang-ja .m-info-group > #pAgeBlock { align-self: center; }
 
   /* The beside-the-photo spacer is meaningless here; the row gap does it. */
   .m-kaimyo.hidden + .m-name { margin-left: 0; }
@@ -2224,7 +2257,11 @@ body.has-tenant-bg .f-member-years {
     font-size: clamp(2rem, 3.6vh, 2.8rem);
     letter-spacing: 0.4em;
   }
-  .m-kaimyo,
+  /* Kaimyo a step larger than the dates, a step under the name. */
+  .m-kaimyo {
+    font-size: clamp(1.6rem, 2.9vh, 2.3rem);
+    letter-spacing: 0.28em;
+  }
   .m-info-value {
     font-size: clamp(1.4rem, 2.55vh, 2.1rem);
     letter-spacing: 0.28em;

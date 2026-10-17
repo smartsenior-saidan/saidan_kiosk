@@ -24,7 +24,7 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap"
     />
-    <link rel="stylesheet" href="css/kiosk.css?v=99" />
+    <link rel="stylesheet" href="css/kiosk.css?v=100" />
     <!-- Pins this kiosk to its memorial site (tenant). Runs before modules. -->
     <script src="js/config.js?v=2"></script>
   </head>
@@ -119,6 +119,10 @@
           id="results"
           aria-live="polite"
         ></div>
+
+        <!-- Portrait only: fills the results slot above the keyboard until a
+             search has results (kiosk.css hides it once .panel-open is set). -->
+        <p class="search-idle-hint" data-i18n="searchIdleHint"></p>
       </div>
 
       <!-- Giant custom scrollbar for the results list. Always visible while the
@@ -138,7 +142,7 @@
     </script>
 
     <script type="module">
-      import { initSearchScreen } from "./js/search.js?v=3";
+      import { initSearchScreen } from "./js/search.js?v=4";
       import { endVisit } from "./js/access-log.js?v=3";
       import { applyTenantBackground } from "./js/tenant-bg.js?v=2";
       import { initNetStatus } from "./js/net-status.js?v=1";
@@ -155,6 +159,7 @@
         searchSub: "姓のみ・名のみ・途中までの入力でも検索できます",
         endVisit: "参拝終了",
         searchPlaceholder: "「名字」か「名前」で検索できます",
+        searchIdleHint: "お名前をひらがなで入力してください",
         searchBtn: "検索",
         spaceBtn: "スペース",
         clearAllBtn: "全消去",
