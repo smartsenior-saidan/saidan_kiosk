@@ -24,7 +24,7 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&display=swap"
     />
-    <link rel="stylesheet" href="css/kiosk.css?v=104" />
+    <link rel="stylesheet" href="css/kiosk.css?v=105" />
     <!-- Pins this kiosk to its memorial site (tenant). Runs before modules. -->
     <script src="js/config.js?v=2"></script>
   </head>
@@ -43,6 +43,9 @@
       <div class="home-greeting">
         <p class="home-greeting-main" data-i18n="greetingMain"></p>
         <p class="home-greeting-sub" data-i18n="greetingSub"></p>
+        <!-- Card-only sites (features.search off): shown in place of the
+             line above; kiosk.css swaps them on data-feat-search. -->
+        <p class="home-greeting-sub home-greeting-sub-card" data-i18n="greetingSubCard"></p>
       </div>
 
       <div class="home-cta">
@@ -151,6 +154,7 @@
       const STRINGS = {
         greetingMain: "ご来園ありがとうございます。",
         greetingSub: "お名前を検索して墓誌をご覧ください",
+        greetingSubCard: "ICカードをかざして墓誌をご覧ください",
         startBtn: "氏名で検索",
         startHint: "納骨場所の番号もご確認いただけます",
         icNote: "※ ICカードをお持ちの方は\nカードリーダーにかざしてください",
@@ -528,7 +532,7 @@
       initNetStatus();
 
       // Page is invisible (bg-loading opacity:0) until this resolves.
-      applyTenantBackground();
+      const themeReady = applyTenantBackground();
 
       // Restore search screen if coming back from family/profile page.
       // Otherwise this is the welcome screen: whoever touches the kiosk next
@@ -546,6 +550,16 @@
             searchInput.dispatchEvent(new Event("input", { bubbles: true }));
           }
         }
+        // A card-only site (features.search off) has no search screen to go
+        // back to. The flag arrives with the theme, so re-check once it's in
+        // and land on the welcome screen instead — which also ends the visit.
+        themeReady.then(() => {
+          if (document.documentElement.getAttribute("data-feat-search") === "off") {
+            searchScreen.classList.add("hidden");
+            homeScreen.classList.remove("hidden");
+            endVisit();
+          }
+        });
       }
 
       // ── QR / barcode scanner (HID keyboard emulator) ──────────────────

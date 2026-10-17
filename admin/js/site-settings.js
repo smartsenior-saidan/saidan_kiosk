@@ -25,7 +25,7 @@ import {
   tenantDoc,
   TENANT_ID,
 } from "./firebase.js?v=16";
-import { t } from "./i18n.js?v=61";
+import { t } from "./i18n.js?v=62";
 
 let esc = (s) => String(s ?? "");
 let setStatus = () => {};
@@ -51,7 +51,7 @@ const FONT_OPTIONS = [
   ["Klee One", "hand"],
   ["Kaisei Tokumin", "mincho"],
 ];
-const FEATURE_KEYS = ["family", "slideshow"];
+const FEATURE_KEYS = ["search", "family", "slideshow"];
 const MAX_BYTES = 8 * 1024 * 1024;
 
 const $ = (id) => document.getElementById(id);

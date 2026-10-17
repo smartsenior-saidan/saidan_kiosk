@@ -34,10 +34,10 @@ import {
   personMediaDoc,
   DISPLAY_NAME,
 } from "./firebase.js?v=16";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=61";
-import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=17";
-import { initUsagePanel, openUsagePanel } from "./usage.js?v=10";
-import { initSiteSettingsPanel, openSiteSettingsPanel } from "./site-settings.js?v=3";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=62";
+import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=18";
+import { initUsagePanel, openUsagePanel } from "./usage.js?v=11";
+import { initSiteSettingsPanel, openSiteSettingsPanel } from "./site-settings.js?v=4";
 
 // ── State ───────────────────────────────────────────────────────────────────
 

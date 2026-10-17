@@ -1045,6 +1045,13 @@ body.has-tenant-bg .f-member-years {
 :root[data-feat-family="off"] .fc-btn-family { display: none; }
 :root[data-feat-slideshow="off"] .f-slideshow-btn { display: none; }
 
+/* Card-only site: no name search. The welcome screen drops the search button
+   and its hint, and the subtitle tells visitors to present their card. */
+.home-greeting-sub-card { display: none; }
+:root[data-feat-search="off"] .home-greeting-sub:not(.home-greeting-sub-card),
+:root[data-feat-search="off"] .home-cta { display: none; }
+:root[data-feat-search="off"] .home-greeting-sub-card { display: block; }
+
 .m-btn-back:hover,
 .m-btn-end:hover {
   background: #f2f2f2;
@@ -2213,7 +2220,7 @@ body.has-tenant-bg .f-member-years {
     margin: 0;
     padding: 0 40px;
     text-align: center;
-    font-size: clamp(1.4rem, 2.6vw, 2rem);
+    font-size: clamp(1.7rem, 3.1vw, 2.4rem);
     letter-spacing: 0.06em;
     color: var(--color-text-muted);
   }

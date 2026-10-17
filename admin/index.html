@@ -546,6 +546,7 @@
                 <h4 class="site-subtitle" data-i18n="site.featuresTitle">Features</h4>
                 <p class="field-hint site-subhint" data-i18n="site.featuresHint">Switch a feature off to hide its buttons on this site's kiosk.</p>
                 <div class="radio-row">
+                  <label class="radio-option"><input type="checkbox" id="siteFeat_search" checked /><span data-i18n="site.feat.search">Name search</span></label>
                   <label class="radio-option"><input type="checkbox" id="siteFeat_family" checked /><span data-i18n="site.feat.family">Family page</span></label>
                   <label class="radio-option"><input type="checkbox" id="siteFeat_slideshow" checked /><span data-i18n="site.feat.slideshow">All-members slideshow</span></label>
                 </div>
@@ -676,7 +677,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=91";
+      import { initAdminPortal } from "./js/admin.js?v=92";
       initAdminPortal();
     </script>
   </body>
