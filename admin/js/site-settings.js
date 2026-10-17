@@ -25,7 +25,7 @@ import {
   tenantDoc,
   TENANT_ID,
 } from "./firebase.js?v=16";
-import { t } from "./i18n.js?v=60";
+import { t } from "./i18n.js?v=61";
 
 let esc = (s) => String(s ?? "");
 let setStatus = () => {};
