@@ -1395,6 +1395,122 @@ tr[data-key]:hover .drill-chevron {
   .top-bar   { padding: 0 16px; height: 64px; }
 }
 
+/* ---- Phone (≤ 640px) ------------------------------------------------------------
+   One column. The nav rail becomes a bottom bar so the content gets the full
+   width; the header stacks (title, then controls) instead of overlapping; the
+   page scrolls as a whole rather than inside a fixed-height panel; and nothing
+   is allowed to force a horizontal scroll — wide tables scroll inside their own
+   wrapper. */
+@media (max-width: 640px) {
+  .app-shell {
+    flex-direction: column;
+    gap: 0;
+    margin: 8px 8px 0;
+    height: auto;
+    min-height: calc(100vh - 8px);
+    padding-bottom: 80px; /* room for the bottom bar */
+  }
+
+  .main-wrap {
+    height: auto;
+    min-height: calc(100vh - 96px);
+    overflow: visible;
+    animation: none;
+  }
+
+  .content {
+    overflow: visible;
+    padding: 14px 12px 24px;
+  }
+
+  /* Bottom bar */
+  .sidebar {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    top: auto;
+    width: auto;
+    height: 64px;
+    flex-direction: row;
+    z-index: 60;
+    box-shadow: var(--shadow-pop);
+    animation: none;
+  }
+  .sidebar-nav {
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: space-around;
+    padding: 6px;
+    gap: 2px;
+    overflow: visible;
+  }
+  .nav-item {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    min-height: 52px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 2px;
+    border-radius: 12px;
+    animation: none;
+  }
+  .nav-item > span:not(.nav-icon) {
+    display: block;
+    font-size: 0.6rem;
+    line-height: 1;
+    max-width: 100%;
+  }
+  .nav-item:hover { transform: none; }
+  .nav-item::before { display: none; }
+
+  /* Header: title line, then the controls on their own line */
+  .top-bar {
+    height: auto;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .top-bar-left { width: 100%; }
+  .page-title-row { flex-wrap: wrap; gap: 4px 10px; }
+  .page-title,
+  .page-site { font-size: 1.05rem; white-space: normal; }
+  .page-site-switch { max-width: 100%; }
+  .page-subtitle { white-space: normal; }
+  .top-bar-right {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .session-info { display: none; }
+
+  .toast {
+    top: auto;
+    bottom: 84px;
+    left: 12px;
+    right: 12px;
+    max-width: none;
+  }
+
+  /* Width discipline: cards shrink to the viewport, tables scroll inside */
+  .form-layout,
+  .staff-layout { max-width: 100%; }
+  .form-layout > .card,
+  .card { min-width: 0; max-width: 100%; }
+  .card { padding: 16px 14px; }
+  .form-row,
+  .form-row-3 { grid-template-columns: 1fr; }
+  .usage-reload { margin-left: 0; }
+  .usage-toolbar .usage-label-gap { margin-left: 0; flex-basis: 100%; } /* "入口:" on its own line */
+  .qr-modal-footer,
+  .card-row { flex-wrap: wrap; }
+  .card-row-actions input[type="search"] { max-width: 100%; }
+  .table-pager { gap: 8px 12px; }
+}
+
 /* ---- Utility --------------------------------------------------------------------- */
 
 .hidden { display: none !important; }
