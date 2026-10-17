@@ -32,8 +32,8 @@ import {
   personMediaDoc,
   DISPLAY_NAME,
 } from "./firebase.js?v=13";
-import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=48";
-import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=4";
+import { t, getLang, setLang, applyStaticI18n, onLangChange } from "./i18n.js?v=49";
+import { initStaffPanel, openStaffPanel, render as renderStaffPanel } from "./staff.js?v=5";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -721,6 +721,7 @@ function renderFamilySection() {
         <td>${f.members.length}${t("fi.peopleSuffix")}</td>
         <td>
           <div class="fam-row-actions">
+            <button class="btn-secondary" data-fam-url="${esc(f.key)}">${t("btn.url")}</button>
             <button class="btn-danger" data-fam-delete="${esc(f.key)}">${t("btn.delete")}</button>
             <span class="drill-chevron">›</span>
           </div>
@@ -750,11 +751,22 @@ function renderFamilySection() {
     });
   });
 
-  // Delete button must not also drill into the family row.
+  // Delete / URL buttons must not also drill into the family row.
   el.querySelectorAll("[data-fam-delete]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       deleteFamily(btn.dataset.famDelete);
+    });
+  });
+  // family.html takes a member as its root and walks that person's links, so a
+  // family's URL is its first member's; an empty family has no URL yet.
+  el.querySelectorAll("[data-fam-url]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const f = families.find((x) => x.key === btn.dataset.famUrl);
+      if (!f) return;
+      if (!f.members.length) { setStatus(t("url.noMembers"), "error"); return; }
+      showUrlModal(kioskUrl("family.html", f.members[0].id), f.name, t("url.familyTitle"));
     });
   });
 }
@@ -1029,6 +1041,7 @@ function profileRow(p, full = false) {
         <td>
           <div class="table-actions">
             <button class="btn-secondary" data-action="qr"     data-id="${p.id}" data-name="${esc(p.last_name || p.first_name || '')}" title="QR Code">QR</button>
+            <button class="btn-secondary" data-action="url"    data-id="${p.id}">${t("btn.url")}</button>
             <button class="btn-secondary" data-action="edit"   data-id="${p.id}">${t("btn.edit")}</button>
             <button class="btn-danger"    data-action="delete" data-id="${p.id}">${t("btn.delete")}</button>
           </div>
@@ -1065,10 +1078,52 @@ function wireProfileActions(container, localProfiles) {
       const person = pool.find((p) => p.id === id);
 
       if (action === "qr"     && person) showQrModal(person);
+      if (action === "url"    && person) showUrlModal(kioskUrl("profile.html", person.id), personName(person), t("url.profileTitle"));
       if (action === "edit"   && person) { loadForEdit(person); showSection("new-profile", { activeNav: "dashboard", personId: person.id }); }
       if (action === "delete" && person) await deleteProfile(person);
     });
   });
+}
+
+// ── Kiosk URL modal ──────────────────────────────────────────────────────────
+// The visitor-facing link for a person or a family, shown so staff can copy it
+// into an email or open it in a normal browser — the same screen the kiosk
+// shows, since the kiosk is just this page in Edge.
+
+/** kiosk.saidans.org/{page}?person=…&site=… for the active tenant. */
+function kioskUrl(page, personId) {
+  return `${KIOSK_ORIGIN}/${page}?person=${encodeURIComponent(personId)}&site=${encodeURIComponent(TENANT_ID || "")}`;
+}
+
+function showUrlModal(url, label, title) {
+  const modal = document.getElementById("urlModal");
+  if (!modal) return;
+  document.getElementById("urlModalTitle").textContent = title;
+  document.getElementById("urlLabel").textContent = label;
+  const input = document.getElementById("urlInput");
+  input.value = url;
+
+  const copyBtn = document.getElementById("urlCopyBtn");
+  copyBtn.textContent = t("url.copy");
+  copyBtn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Clipboard API needs a secure context + permission; fall back to the
+      // selection-based copy, which still works from a click handler.
+      input.select();
+      document.execCommand("copy");
+    }
+    copyBtn.textContent = t("url.copied");
+    setTimeout(() => { copyBtn.textContent = t("url.copy"); }, 1500);
+  };
+  document.getElementById("urlOpenBtn").onclick = () => window.open(url, "_blank", "noopener");
+  document.getElementById("urlModalClose").onclick = () => { modal.style.display = "none"; };
+  modal.onclick = (e) => { if (e.target === modal) modal.style.display = "none"; };
+
+  modal.style.display = "flex";
+  input.focus();
+  input.select();
 }
 
 // ── QR Code modal ────────────────────────────────────────────────────────────

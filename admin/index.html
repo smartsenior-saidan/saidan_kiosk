@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="css/style.css?v=10" />
-    <link rel="stylesheet" href="css/admin.css?v=26" />
+    <link rel="stylesheet" href="css/admin.css?v=27" />
   </head>
   <body>
     <div class="app-shell">
@@ -432,9 +432,28 @@
       </div>
     </div>
 
+    <!-- Kiosk URL modal — show / copy / open the visitor-facing link -->
+    <div id="urlModal" class="qr-modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="urlModalTitle">
+      <div class="qr-modal">
+        <div class="qr-modal-header">
+          <h2 class="qr-modal-title" id="urlModalTitle">Kiosk URL</h2>
+          <button class="qr-modal-close" id="urlModalClose" aria-label="Close">✕</button>
+        </div>
+        <div class="qr-modal-body">
+          <p class="qr-family-label" id="urlLabel"></p>
+          <input class="url-input url-modal-input" id="urlInput" type="text" readonly aria-label="Kiosk URL" />
+          <p class="qr-url" data-i18n="url.hint">Open this link to show the same screen as the kiosk in any browser.</p>
+        </div>
+        <div class="qr-modal-footer">
+          <button class="btn" id="urlCopyBtn" data-i18n="url.copy">Copy</button>
+          <button class="btn-secondary" id="urlOpenBtn" data-i18n="url.open">Open</button>
+        </div>
+      </div>
+    </div>
+
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=75";
+      import { initAdminPortal } from "./js/admin.js?v=76";
       initAdminPortal();
     </script>
   </body>
