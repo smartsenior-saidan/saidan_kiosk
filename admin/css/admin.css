@@ -1992,15 +1992,60 @@ tr[data-key]:hover .drill-chevron {
 
 /* ---- Sample memorial messages (profile form §3) ----------------------------- */
 
-.sample-pick {
-  display: flex;
+/* A closed list that opens on demand, so every sample can be read in full */
+.sample-pick { margin-top: 8px; }
+.sample-pick > summary {
+  list-style: none;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 8px;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-card);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  user-select: none;
 }
-.sample-pick select { max-width: 420px; min-height: 36px; font-size: 0.85rem; }
-.sample-pick .field-hint { margin: 0; }
+.sample-pick > summary::-webkit-details-marker { display: none; }
+.sample-pick > summary:hover { border-color: var(--color-accent); }
+.sample-pick[open] > summary { border-color: var(--color-accent); }
+.sample-pick-caret { font-size: 0.8rem; color: var(--color-text-muted); transition: transform 0.15s; }
+.sample-pick[open] .sample-pick-caret { transform: rotate(180deg); }
+.sample-pick > .field-hint { margin: 8px 0 6px; }
+
+.sample-msgs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sample-msg {
+  text-align: left;
+  white-space: normal;
+  line-height: 1.6;
+  font-size: 0.86rem;
+  font-weight: 400;
+  padding: 10px 14px;
+  min-height: unset;
+  min-width: unset;
+  border: 1px dashed var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-inset);
+  background-image: none;
+  color: var(--color-text);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.sample-msg:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  box-shadow: none;
+}
 
 /* ---- Family contact (create-family page + open family) ---------------------- */
 

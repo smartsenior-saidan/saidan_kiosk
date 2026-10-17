@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="css/style.css?v=10" />
-    <link rel="stylesheet" href="css/admin.css?v=37" />
+    <link rel="stylesheet" href="css/admin.css?v=38" />
   </head>
   <body>
     <div class="app-shell">
@@ -242,11 +242,14 @@
                     <div class="field">
                       <label for="biography" data-i18n="form.biography">Biography</label>
                       <textarea id="biography" maxlength="100" placeholder="Share their life story, memories, and legacy…" data-i18n-ph="ph.biography"></textarea>
-                      <!-- Sample messages: pick one from the dropdown to drop it into the box (admin.js renderBioSamples) -->
-                      <div class="sample-pick">
-                        <select id="bioSamples" aria-label="Sample messages"></select>
-                        <span class="field-hint" data-i18n="hint.bioSamples">Pick a sample to use as a starting point, then edit it.</span>
-                      </div>
+                      <!-- Sample messages: a closed list that opens on demand and shows each
+                           sample in full (a native <select> clips long options). Items are
+                           rendered by admin.js renderBioSamples. -->
+                      <details class="sample-pick" id="bioSamplesBox">
+                        <summary><span data-i18n="bio.pick">Insert a sample message…</span><span class="sample-pick-caret">▾</span></summary>
+                        <p class="field-hint" data-i18n="hint.bioSamples">Pick a sample to use as a starting point, then edit it.</p>
+                        <div class="sample-msgs" id="bioSamples"></div>
+                      </details>
                     </div>
                   </div>
 
@@ -673,7 +676,7 @@
 
     <script src="./js/qrcode.min.js"></script>
     <script type="module">
-      import { initAdminPortal } from "./js/admin.js?v=89";
+      import { initAdminPortal } from "./js/admin.js?v=90";
       initAdminPortal();
     </script>
   </body>

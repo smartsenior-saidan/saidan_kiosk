@@ -1402,33 +1402,34 @@ function showQrModal(person) {
 const BIO_SAMPLE_KEYS = ["bio.sample1", "bio.sample2", "bio.sample3"];
 
 function renderBioSamples() {
-  const sel = document.getElementById("bioSamples");
-  if (!sel) return;
-  // A dropdown: the placeholder row, then one row per sample (shortened so the
-  // menu stays readable; the full text is what gets inserted).
-  const short = (s) => (s.length > 40 ? s.slice(0, 40) + "…" : s);
-  sel.innerHTML = `<option value="">${esc(t("bio.pick"))}</option>` + BIO_SAMPLE_KEYS.map((k) =>
-    `<option value="${k}">${esc(short(t(k)))}</option>`
+  const wrap = document.getElementById("bioSamples");
+  const box = document.getElementById("bioSamplesBox");
+  if (!wrap) return;
+  // The list stays closed until opened; each sample is shown in full so it
+  // can be read before choosing. Picking one fills the box and closes the list.
+  wrap.innerHTML = BIO_SAMPLE_KEYS.map((k) =>
+    `<button type="button" class="sample-msg" data-key="${k}">${esc(t(k))}</button>`
   ).join("");
-  sel.onchange = async () => {
-    const key = sel.value;
-    sel.value = ""; // always snap back to the placeholder
-    const box = document.getElementById("biography");
-    if (!key || !box) return;
-    const text = t(key);
-    if (box.value.trim() && box.value.trim() !== text) {
-      const ok = await confirmDialog({
-        title: t("bio.replaceTitle"),
-        body: t("bio.replaceBody"),
-        confirmLabel: t("bio.replaceConfirm"),
-        danger: false,
-      });
-      if (!ok) return;
-    }
-    box.value = text.slice(0, box.maxLength > 0 ? box.maxLength : text.length);
-    box.dispatchEvent(new Event("input", { bubbles: true }));
-    box.focus();
-  };
+  wrap.querySelectorAll(".sample-msg").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const bio = document.getElementById("biography");
+      if (!bio) return;
+      const text = t(btn.dataset.key);
+      if (bio.value.trim() && bio.value.trim() !== text) {
+        const ok = await confirmDialog({
+          title: t("bio.replaceTitle"),
+          body: t("bio.replaceBody"),
+          confirmLabel: t("bio.replaceConfirm"),
+          danger: false,
+        });
+        if (!ok) return;
+      }
+      bio.value = text.slice(0, bio.maxLength > 0 ? bio.maxLength : text.length);
+      bio.dispatchEvent(new Event("input", { bubbles: true }));
+      if (box) box.open = false;
+      bio.focus();
+    });
+  });
 }
 
 // ── Family contact (施主・ご遺族の連絡先) ────────────────────────────────────
