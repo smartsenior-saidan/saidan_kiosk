@@ -4,6 +4,8 @@ package-lock.json
 # ...except the rules tests, whose pinned dependencies CI installs with npm ci.
 !tests/rules/package.json
 !tests/rules/package-lock.json
+# Written by the Firebase emulators on every test run.
+*-debug.log
 .DS_Store
 
 # Firebase Admin service-account key (secret — used by scripts/rename-tenant.js)
