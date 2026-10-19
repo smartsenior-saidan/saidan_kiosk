@@ -43,14 +43,17 @@ describe("kiosk / anonymous — what the visitor pages need", () => {
 });
 
 describe("kiosk / anonymous — folder listing", () => {
-  // STAGE 1 flips both of these to denied. Listing a tenant folder returns its
-  // sub-folders, and those are named by person id — the same enumeration the
-  // families list allows, through a different door.
-  test("list a tenant folder — currently open", () =>
-    assertSucceeds(ls(anon(), "kodaira_memorial")));
+  // STAGE 1. Listing a tenant folder returns its sub-folders, and those are
+  // named by person id — the same enumeration the families list allowed,
+  // through a different door.
+  test("list a tenant folder is denied", () =>
+    assertFails(ls(anon(), "kodaira_memorial")));
 
-  test("list one person's folder — currently open", () =>
-    assertSucceeds(ls(anon(), "kodaira_memorial/p1")));
+  test("list one person's folder is denied", () =>
+    assertFails(ls(anon(), "kodaira_memorial/p1")));
+
+  test("list a tenant's background presets is denied", () =>
+    assertFails(ls(anon(), "kodaira_memorial/backgrounds")));
 
   test("list the shared presets", () =>
     assertSucceeds(ls(anon(), "individuals_backgrounds")));
@@ -76,6 +79,12 @@ describe("site staff (kodaira)", () => {
 
   test("cannot replace a background preset (super admin only)", () =>
     assertFails(upload(as(UID.staff), "kodaira_memorial/backgrounds/background1.png")));
+
+  test("list own tenant folder", () =>
+    assertSucceeds(ls(as(UID.staff), "kodaira_memorial")));
+
+  test("cannot list another tenant's folder", () =>
+    assertFails(ls(as(UID.staff), "tokyo_reien")));
 });
 
 describe("super admin", () => {
@@ -84,4 +93,7 @@ describe("super admin", () => {
 
   test("cannot write the console-managed shared presets", () =>
     assertFails(upload(as(UID.super), "individuals_backgrounds/background9.png")));
+
+  test("list any tenant folder", () =>
+    assertSucceeds(ls(as(UID.super), "tokyo_reien")));
 });

@@ -33,7 +33,7 @@ service firebase.storage {
     }
     // ══ END MIGRATION ════════════════════════════════════════════════════════
 
-    // Everything under a tenant folder is public to read: the kiosk is
+    // Any file under a tenant folder is public to fetch: the kiosk is
     // unauthenticated, same as the memorial records in Firestore. Writes are
     // split by what the path is FOR, because overlapping match blocks are
     // OR-ed — one broad "staff may write anything here" rule would let staff
@@ -45,16 +45,25 @@ service firebase.storage {
     //
     // Both are edited from the admin's 施設設定 tab (super admins only), which
     // mirrors who may change tenants/{tid} in firestore.rules.
+    //
+    // Reads are split: fetching one file by path stays public, LISTING a
+    // folder is staff only. Memorial media sits in folders named by person
+    // id, so listing a tenant folder hands out the id of every person at the
+    // site — the same enumeration firestore.rules closes on families. Neither
+    // app lists Storage; everything goes through getDownloadURL(), a get.
     match /{tenantId}/{file} {
-      allow read: if true;
+      allow get:  if true;
+      allow list: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
       allow write: if tenantId != 'individuals_backgrounds' && isSuperAdmin();
     }
     match /{tenantId}/backgrounds/{file} {
-      allow read: if true;
+      allow get:  if true;
+      allow list: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
       allow write: if isSuperAdmin();
     }
     match /{tenantId}/{personId}/{file} {
-      allow read: if true;
+      allow get:  if true;
+      allow list: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
       allow write: if personId != 'backgrounds'
                    && (ownsTenant(tenantId) || legacyOwnsTenant(tenantId));
     }

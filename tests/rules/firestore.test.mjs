@@ -55,11 +55,10 @@ describe("kiosk / anonymous — families", () => {
   test("get one family by id", () =>
     assertSucceeds(get(anon(), `${KODAIRA}/families/f1`)));
 
-  // STAGE 1 flips this to denied. The kiosk never reads families; the open
-  // list hands out every member_id, which defeats any restriction on listing
-  // individuals.
-  test("list a tenant's families — currently open", () =>
-    assertSucceeds(list(anon(), `${KODAIRA}/families`)));
+  // STAGE 1. The kiosk never reads families; an open list would hand out every
+  // member_id, which defeats any restriction on listing individuals.
+  test("list a tenant's families is denied", () =>
+    assertFails(list(anon(), `${KODAIRA}/families`)));
 
   test("family contact (施主) stays private", () =>
     assertFails(get(anon(), `${KODAIRA}/families/f1/private/contact`)));
@@ -106,6 +105,9 @@ describe("site staff (kodaira)", () => {
   test("list own families (admin family page)", () =>
     assertSucceeds(list(as(UID.staff), `${KODAIRA}/families`)));
 
+  test("cannot list another tenant's families", () =>
+    assertFails(list(as(UID.staff), `${TOKYO}/families`)));
+
   test("read own family contact", () =>
     assertSucceeds(get(as(UID.staff), `${KODAIRA}/families/f1/private/contact`)));
 
@@ -122,6 +124,9 @@ describe("site staff (kodaira)", () => {
 describe("legacy admin record (migration)", () => {
   test("list own families", () =>
     assertSucceeds(list(as(UID.legacy), `${KODAIRA}/families`)));
+
+  test("cannot list another tenant's families", () =>
+    assertFails(list(as(UID.legacy), `${TOKYO}/families`)));
 
   test("write own individual", () =>
     assertSucceeds(put(as(UID.legacy), `${KODAIRA}/individuals/p5`, { last_name: "x" })));

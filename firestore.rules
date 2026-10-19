@@ -12,7 +12,8 @@ rules_version = '2';
 //     someone takes effect immediately and a tampered client can claim neither.
 //   • Memorial content is publicly READABLE because the visitor-facing kiosk
 //     runs without authentication. Each kiosk is pinned to one tenant by the
-//     path it reads, but reads themselves are open.
+//     path it reads, but reads themselves are open — except listing a site's
+//     families, which would enumerate every person id (see /families).
 //
 // A super admin belongs to NO tenant. The `default_tenant` on their record only
 // decides which site the admin panel opens on; it grants nothing.
@@ -155,7 +156,13 @@ service cloud.firestore {
       }
 
       match /families/{familyId} {
-        allow read:   if true;                   // public kiosk
+        // One family by id stays public. LISTING a site's families is staff
+        // only: every family carries member_ids, so an open list hands out the
+        // id of every person at the site — and a person by id is public (QR
+        // codes depend on it). The kiosk never reads families at all; the admin
+        // family pages list them as staff.
+        allow get:    if true;
+        allow list:   if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
         allow create, update: if (ownsTenant(tenantId) || legacyOwnsTenant(tenantId))
                               && withinFamilyLimit();
         allow delete: if ownsTenant(tenantId) || legacyOwnsTenant(tenantId);
