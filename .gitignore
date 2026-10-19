@@ -1,6 +1,9 @@
 node_modules/
 package.json
 package-lock.json
+# ...except the rules tests, whose pinned dependencies CI installs with npm ci.
+!tests/rules/package.json
+!tests/rules/package-lock.json
 .DS_Store
 
 # Firebase Admin service-account key (secret — used by scripts/rename-tenant.js)
