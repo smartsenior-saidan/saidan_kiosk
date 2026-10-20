@@ -394,7 +394,7 @@ index.html → admin.js?v=N → i18n.js?v=M, firebase.js?v=K
 
 ### 10.1 `DEFAULT_TENANT` が実在しない
 
-`kiosk/js/config.js` の `"memorial-1"` は存在しないテナント。`?site=` 無しで起動した端末、または localStorage を消した端末は何も表示できない。`kiosk/TENANTS.md` にも整合させるよう注記が残ったまま。
+`kiosk/js/config.js` の `"memorial-1"` は存在しないテナント。`?site=` 無しで起動した端末、または localStorage を消した端末は何も表示できない。`TENANTS.md` にも整合させるよう注記が残ったまま。
 
 ### 10.2 バックアップが無い（2026-08-08 時点）
 

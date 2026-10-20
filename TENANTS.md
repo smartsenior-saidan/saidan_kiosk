@@ -11,7 +11,7 @@ There are **four** places a tenant is defined. Only the first is required.
 
 ## 1. Firestore — `tenants/{tenant_id}` (the tenant's config)
 
-Read at kiosk startup by [js/tenant-bg.js](js/tenant-bg.js) via `getTenantConfig()`.
+Read at kiosk startup by [js/tenant-bg.js](kiosk/js/tenant-bg.js) via `getTenantConfig()`.
 Every field is optional; omit what you don't need.
 
 ```jsonc
@@ -52,14 +52,14 @@ Auto-loaded after the base stylesheet when the active tenant matches the
 filename, and scoped by `[data-tenant="{id}"]`. Use it only when a tenant needs
 **layout/structure** changes beyond colors/fonts/copy (spacing, hiding or
 reordering sections, a different type scale). Copy
-[css/tenants/_template.css](css/tenants/_template.css) to start. A tenant with
+[css/tenants/_template.css](kiosk/css/tenants/_template.css) to start. A tenant with
 no file stays on the base look. If a screen needs a genuinely different *layout*,
 that's the swappable view-module layer — ask before forking a screen.
 
 ## 4. Admin login — `admins/{uid}.tenant_id`
 
 Create the staff Firebase Auth user, then an `admins/{uid}` doc with
-`tenant_id: "{tenant_id}"`. [firestore.rules](../firestore.rules) scopes every
+`tenant_id: "{tenant_id}"`. [firestore.rules](firestore.rules) scopes every
 admin write to this value, so the tenant's staff only ever see/edit their own
 records. Content they create (people, media) is auto-stamped with their tenant.
 
@@ -67,7 +67,7 @@ records. Content they create (people, media) is auto-stamped with their tenant.
 
 ## Pin a device to the tenant
 
-Each kiosk device is pinned in [js/config.js](js/config.js) via `DEFAULT_TENANT`,
+Each kiosk device is pinned in [js/config.js](kiosk/js/config.js) via `DEFAULT_TENANT`,
 or per-device at first load with `?site={tenant_id}` (persisted to localStorage).
 
 > **Reconcile before launch:** `DEFAULT_TENANT` in config.js is currently
