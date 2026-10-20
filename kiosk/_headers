@@ -1,0 +1,15 @@
+# Cloudflare Pages response headers for kiosk.saidans.org.
+#
+# Keep every page out of search results. Memorial pages are reachable by
+# anyone holding a QR code, and that is intended — being findable on Google
+# is not.
+#
+# This is a header rather than a robots.txt Disallow on purpose: a crawler
+# blocked from fetching a page never sees its noindex, so a QR URL posted
+# somewhere public could still be listed (URL only). Cloudflare's managed
+# robots.txt already lets search engines crawl, which is what makes this work.
+#
+# Well-behaved crawlers only. It does nothing against a scraper; access
+# control lives in firestore.rules / storage.rules.
+/*
+  X-Robots-Tag: noindex, nofollow, noarchive

@@ -1,0 +1,6 @@
+# Cloudflare Pages response headers for admin.saidans.org.
+#
+# The staff console has no reason to appear in search results. See
+# kiosk/_headers for why this is a header and not a robots.txt Disallow.
+/*
+  X-Robots-Tag: noindex, nofollow, noarchive
